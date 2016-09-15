@@ -1,0 +1,280 @@
+FEAST (fasta editing and subsampling tool) Info
+
+Welcome to my script. It is useful for modifying and subsampling .fasta files based on seqid and taxonomic information.
+
+___________________________
+Commands:
+Simplify/SimplifyKeep
+Remove
+PFAM
+AppendRanks
+Seperate
+Extract
+SubSample
+Summarize
+Compare
+MultiDataSubSample
+Merge
+___________________________
+Bugs:
+please only use files named foo.fasta as input. not ending the string in .fasta may cause an error. having extra periods in the string may cause an error.
+test.fasta = ok
+test.example.fasta = may error
+test.txt = may error
+___________________________
+Examples:
+	FEAST.py /path/to/directory example.fasta -si -ar "kingdom class" -ex "Eukaryotes" -ss "2 1"
+This will look at example.fasta in directory. It will "simplify" the SeqIDs from NCBI online download or BLASTP outfmt "6 sseqid stitle sseq". Then it will append kingdom and class information to each seqID (>oldseqID ---> >kingdom|class|oldseqID) via "appendrank". It will then "extract" all sequences with the string "Eukaryotes". Finally, it will perform subsampling on the extracted eukarotes-containing sequences. The output will contain one random sequence per unique depth-2 string (in this case depth-2 corresponds to "class"). 
+	Generated files will include:
+		exampleSh.fasta (simplified) 
+		exampleShKC.fasta (with kingdom and class appended)
+		exampleShKCExtracted.fasta (only containing seqs with str "Eukaryotes"
+		exampleShKCExtractedSubSamp1p2.fasta (subsampled 1 random sequence per class)
+
+	FEAST.py /path/to/directory example.fasta -sk -rm TX -pf "L, Test_N_Term Test_C_Term"
+This will look at example.fasta in directory. It will simplify the SeqIDs from NCBI online download or BLASTP outfmt "6 sseqid stitle sseq", keeping gene information via "simplifykeep". Then it will keep only one sequence per unique species using the "remove TX" command. Each resulting sequence will then be vetted for the presence of conserved domains Test_N_Term and Test_C_Term via a local install of Pfam - sequences with both domains will be kept. 
+	Generated files will include:
+		exampleMo.fasta (simplified keeping info)
+		exampleMoNDTaxa (removed duplicates by Taxon)
+		exampleMoNDTaxaVet (after Pfam vetting for Test_N_Term and Test_C_Term)
+___________________________
+Command Details
+___________________________
+Directory:
+Usage: 
+	FEAST.py /path/to/directory
+Purpose: 
+	Specifies a directory to run in - all input files should be here, and all output files should write to here. 
+
+Fasta:
+Usage: 
+	FEAST.py /path/to/directory example.fasta
+	FEAST.py /path/to/directory "example1.fasta example2.fasta example3.fasta"
+Purpose: 
+	Specifies a fasta file or files to run on. If multiple files are listed, all operations will be done to each included file. Note that Compare requires exactly 2 files to be listed, and MultiDataSubsampling requires a minimium of 2.
+___________________________
+Simplify
+Usage:	
+	-simplify 
+	-si
+Example:
+	FEAST.py /path/to/directory example.fasta -si 
+		This will produce exampleSh.fasta, with all of the sequences of example.fasta but with shortened names.
+Purpose:
+	Takes output from NCBI Blast webserver download or otherwise formatted like >gi|587572769|gb|AHK06412.1|:1-224 manganese superoxide dismutase [Megalobrama amblycephala]
+	and replaces the seqID with just >Species_name|gi#|##### (in this case, >Megalobrama_amblycephala|gi|587572769). 
+	Removes disallowed characters like spaces, :;,` etc.
+	This operation (or simplifykeep) is necessary for to be preformed on a .fasta before AppendRank, SubSample, Compare, Summarize, or MDS will work - as they rely on this format.
+How it works:
+	This is just regex to get a consistant seqID placement of species and gi#. 
+	NOTE that sequences that do not fit the NCBI-out input pattern (eg; lack a given species name) will be saved to a TaxaError file.
+___________________________
+SimplifyKeep
+Usage:	
+	-simplifykeep
+	-sk
+Example:
+	FEAST.py /path/to/directory example.fasta -sk 
+		This will produce exampleMo.fasta, with all of the sequences of example.fasta but with shortened names.
+Purpose:
+	Takes output from NCBI Blast webserver download or otherwise formatted like >gi|587572769|gb|AHK06412.1|:1-224 manganese superoxide dismutase [Megalobrama amblycephala]
+	and replaces the seqID with just >Species_name|gi#|#####|Gene_Info (in this case, >Megalobrama_amblycephala|gi|587572769|1_224_manganese_superoxide_dismutase). 
+	Removes disallowed characters like spaces, :;,` etc.
+	This operation (or simplify) is necessary for to be preformed on a .fasta before AppendRank, SubSample, Compare, Summarize, or MDS will work - as they rely on this format.
+How it works:
+	This is just regex to get a consistant seqID placement of species and gi#. 
+	NOTE that sequences that do not fit the NCBI-out input pattern (eg; lack a given species name) will be saved to a *TaxaError file.
+___________________________
+Remove
+Usage:	
+	-remove mode
+	-rm mode
+Example:
+	FEAST.py /path/to/directory example.fasta -re SI
+		This will produce a new file with duplicates removed based on seqID (keeping one per seqID).
+	FEAST.py /path/to/directory example.fasta -re "SI TX"
+		This will produce a new file with duplicates removed based on seqID (keeping one per seqID), and also based on Taxon_name (keeping one per taxon).
+Variables:
+	mode - 	chose from one of four modes
+		AA - keep one per identical amino acid sequence
+		TX - keep one per identical Taxon_name
+		SI - keep one per identical SequenceID
+		GI - if a GI number is present in more than one sequence, remove them all.
+Purpose:
+	Removes duplicates in various ways. Reduces number of sequences. 
+How it works:
+	Makes a new file without duplicates based on seqID info or sequence.    
+
+___________________________
+PFAM
+Usage:
+	-pfam "mode, conserved_domain(s)"
+	-pf "mode, conserved_domain(s)"
+Example:
+	FEAST.py /path/to/directory example.fasta -pf "O, Example_C_term"
+		This will run online pfam, keeping only sequences identified to have an Example_C_term domain.
+	FEAST.py /path/to/directory example.fasta -pf "L, Example_C_term Example_N_Term"
+		This will run local pfam, keeping only sequences identified to have an Example_C_term domain and an Example_N_term domain.
+	FEAST.py /path/to/directory example.fasta -pf "F<examplePfamFile.txt>, Example_C_term"
+		This will take a previously-generated pfam file that corresponds to your given .fasta, and parse both, creating a new fasta including only sequences identified to have an Example_C_term domain.
+Variables:
+	mode - 	Chose from one of three modes to run in:
+		Online - Type an "O". This requires you to manually upload a generated file to pfam online database (http://pfam.xfam.org/), wait until it is done running, and then save the output in the directory folder as indicated. Chose this if you want to run pfam, but do not have it installed locally.
+		Local - Type an "L". Ensure that you have pfam_scan.pl installed, and have the pfamdatabase in your path, or have edited the third line of this script containing the variable pfamdatabasedir to point to your Pfam data files eg "/home/abigail/Downloads/PfamScan/PfamData/". 
+		File - Type an "F" followed by the name of your Pfam file within <>. The specified Pfam file will be parsed, instead of re-running pfam at all.       
+	conserved_domain(s) - Type one or mode space-seperated pfam domains to vet for the presence of. If you use multiples, vetting will require the presence of ALL indicated domains. 
+Purpose:
+	Allows for integrated vetting of sequences based on their conserved domains. This may ensure that any given sequence after vetting is actually a representative of your gene(s) of interest. Type "mode,conserved_domain" including quotes and the comma. 
+How it works:
+	Pfam gets the conserved domain information for each sequence. This script parses Pfam output, correlates it with your .fasta file, and makes a new file containing only sequences that were found by Pfam to have your indicated domain(s).
+___________________________
+AppendRanks
+Usage:	
+	-appendranks rank
+	-ar rank
+Example:
+	FEAST.py /path/to/directory example.fasta -ar "kingdom"
+		This will produce a new file called exampleK.fasta that contains each sequence from example with seqIDs formatted like >kingdom|old_seqID
+	FEAST.py /path/to/directory example.fasta -re "kingdom phylum order"
+		This will produce a new file called exampleK.fasta that contains each sequence from example with seqIDs formatted like >kingdom|phylum|order|old_seqID
+Variables:
+	rank - include within quotes a space-seperated list of taxonomic ranks to append to seqID. All data is pulled from NCBI, so you can include things like common_name or subclass etc.
+Purpose:
+	Adds taxonomic information for ease of understanding produced trees, or for use by other parts of the script such as subsampling.
+How it works:
+	Parses each sequence for it's GI number, queries NCBI for the associated TAXID, and then queries NCBI taxonomy database for the associated taxonomic rank(s) specified. If there is no given taxonomic information, the script will print "NA" in the specified place. If no taxonomic information is available at all (wrong formatting of SeqIDs, sequence not from NCBI, or no internet access) the script will print NT| and move on.
+   
+___________________________
+
+Seperate
+Usage:	
+	-seperate string
+	-sp string
+Example:
+	FEAST.py /path/to/directory example.fasta -sp Bacteria
+		this will split example.fasta into two files, exampleChosen.fasta (containing all sequences that have "Bacteria" in the seqID) and exampleNotChosen.fasta (containing all the rest)
+	FEAST.py /path/to/directory example.fasta -sp "Cyanobacteria Proteobacteria"
+		Same as above, but any sequence containing "Cyanobacteria" or "Proteobacteria" will be in the exampleChosen.fasta file, the rest will be in exampleNotChosen.fasta.
+	FEAST.py /path/to/directory example.fasta -sp "Cyanobacteria Proteobacteria keepone"
+		The exampleChosen.fasta file will have the first sequence whose ID contains "Cyanobacteria" and the first sequence whose ID contains "Proteobacteria". The exampleNotChosen file will have all other sequences.
+Variables:
+	string - this should be the thing you want to check seqIDs for. if using multiples, keep them spece-seperated and within quotes.
+Purpose:
+	Sometimes you want to seperate your data, this makes it quick and easy to do.
+	If any of the input string(s) are found in the seqID of a given sequence, it will be written to a *Chosen file. 
+	If none of the strings are found, it will be written to a *NotChosen file.
+	Including "keepone" in the given list will change behaviour to keep just the first sequence containing a given string in the *Chosen file, and send the rest to NotChosen.
+How it works:
+	Literally just writes to different files based on seqID names.
+___________________________
+Extract
+Usage:
+	-extract string
+	-ex string
+Example:
+	FEAST.py /path/to/directory example.fasta -ex Bacteria
+		This will create a new file called exampleExtracted.fasta that contains only sequences from example.fasta that had the string "Bacteria" in their SeqID.
+	FEAST.py /path/to/directory example.fasta -ex "Cyanobacteria Proteobacteria"
+		Same as above, but any sequence containing "Cyanobacteria" or "Proteobacteria" will be in the exampleExtracted.fasta file.
+	FEAST.py /path/to/directory example.fasta -ex "Cyanobacteria Proteobacteria keepone"
+		The exampleExtracted.fasta will have the first sequence whose ID contains "Cyanobacteria" and the first sequence whose ID contains "Proteobacteria".
+Variables:
+	string - this should be the thing you want to check seqIDs for. if using multiples, keep them space-seperated and within quotes.
+Purpose:
+	Sometimes you want just a subset of your data, this makes it quick and easy to do.
+	If any of the input string(s) are found in the seqID of a given sequence, it will be written to a *Extracted file.
+	Including "keepone" in the given list will change behaviour to keep just the first sequence containing a given string in the *Extracted file.
+How it works:
+	Writes to a new file if seqeuenceID includes given terms.
+ 
+___________________________
+SubSample
+Usage:	
+	-subsample "ranknum, seqnum nadrop(optional)"
+	-ss "ranknum, seqnum nadrop(optional)"
+Example:
+	FEAST.py /path/to/directory example.fasta -ss "1,1"
+		This will produce a new file called example1per1.fasta that contains a subsampling of sequences from example.fasta. If seqIDs from example look like: >kingdom|phylum|order|old_seqID, then this will write one random sequence per unique kingdom-string to the new file. 
+	FEAST.py /path/to/directory example.fasta -ss "1,1 nadrop"
+		This will produce a new file called example1per1.fasta that contains a subsampling of sequences from example.fasta. If seqIDs from example look like: >kingdom|phylum|order|old_seqID, then this will write one random sequence per unique kingdom-string to the new file. If rank = "NA", look one rank lower.
+	FEAST.py /path/to/directory example.fasta -ss "2,3"
+	This will produce a new file called example3per2.fasta that contains a subsampling of sequences from example.fasta. If seqIDs from example look like: >kingdom|phylum|order|old_seqID, then this will write three random sequences per unique order-string to the new file. 
+Variables:
+	ranknum - how many bars deep in the appended taxonomy to look. for example, the seqID >kingdom|phylum|order|old_seqID has "kingdom" one deep, "phylum" two deep, "order" three deep, "old_seqID" four deep. the script will compare all strings of a specified depth to each other, such that you can do subsampling at whichever taxonomic rank you require. Ensure that all sequences had taxonomy appended in the same way, else your subsampling will not be representative.
+	seqnum - the number of sequences per unique string to keep.
+	nadrop - type "nadrop" to toggle on. if NCBI taxonomy returned "NA" for a given sequenceID-rank combo, look one rank lower for that sequence only. this can preserve data that might otherwise have been lost, but could result in oversampling (for example, all cyanobacteria are missing class on NCBI) - use with caution.
+Purpose:
+	Subsamples evenly across a dataset at any given taxonomic depth.
+How it works:
+	Parses each sequenceID for the string at specified depth(ranknum), starting at one and incrementing at bars. All strings are compared, and matching-string sequences are pooled together. A given number(seqnum) are randomly selected from each pool and printed to the new document.
+  ___________________________
+Summarize
+Usage:	
+	-summarize ranknum
+	-su ranknum
+Example:
+	FEAST.py /path/to/directory example.fasta -su 1
+		This will print a list of all strings in rank 1 (kingdom if the seqIDs are like >kingdom|phylum|order|old_seqID), and how many taxa have that unique string. eg
+		Bacteria 12
+		Eukaryota 3
+Variables:
+	ranknum - how many bars deep in the appended taxonomy to look. for example, the seqID >kingdom|phylum|order|old_seqID has "kingdom" one deep, "phylum" two deep, "order" three deep, "old_seqID" four deep. the script will compare all strings of a specified depth to each other, such that you get an accurate summary at whichever taxonomic rank you require. Ensure that all sequences had taxonomy appended in the same way, else your summary will not be representative.
+Purpose:
+	Quickly summarize large datasets at whatever precision you require.
+How it works:
+	Parses each sequenceID for the string at specified depth(ranknum), starting at one and incrementing at bars. All strings are compared, and each time a duplicate comes up that string tally is incremented by one. Results are printed highest tally -> lowest
+___________________________
+Compare
+parser.add_argument("-co", "--compare", action="store_true", help="Toggle compares two (exactly 2) .fasta files and describes what taxa are shared/in each")
+
+Usage:	
+	-compare 
+	-co
+Example:
+	FEAST.py /path/to/directory "example.fasta example2.fasta" -co
+		This will compare the species_names in exactly two fasta files, and print 1. all taxa in both example.fasta and example2.fasta, 2. all taxa only in example.fasta, and 3. all taxa only in example2.fasta
+Purpose:
+	Quickly find what taxa are shared in two files, and which are not.
+How it works:
+	Uses regex to identify the species name (given seqIDs in shortened / shorten-appended format), and checks between two files.
+___________________________
+MultiDataSubSample
+Usage: 
+	-multidatasub "ranknum seqnum strain(optional) nadrop(optional)"
+	-ms "ranknum seqnum strain(optional) nadrop(optional)" 
+Example:
+       FEAST.py /path/to/directory "example.fasta example2.fasta" -ms "4 1" 
+		This will take one sequence per unique string of depth(ranknum) 4, biased towards taking the same taxon from both example and example2 datasets.
+Variables:
+	ranknum - how many bars deep in the appended taxonomy to look. for example, the seqID >kingdom|phylum|order|old_seqID has "kingdom" one deep, "phylum" two deep, "order" three deep, "old_seqID" four deep. the script will compare all strings of a specified depth to each other, such that you can do subsampling at whichever taxonomic rank you require. Ensure that all sequences had taxonomy appended in the same way, else your subsampling will not be representative.
+	seqnum - the number of sequences per unique string to keep.
+	nadrop - type "nadrop" to toggle on. if NCBI taxonomy returned "NA" for a given sequenceID-rank combo, look one rank lower for that sequence only. this can preserve data that might otherwise have been lost, but could result in oversampling (for example, all cyanobacteria are missing class on NCBI) - use with caution.
+	strain - type "strain" to toggle on. this is an option when working with data that has species name written like Species_name_sample1 or Species_name_strain2x5 etc and you want to ignore everything after Species_name for purposes of determining presence of species across datasets. 
+Purpose: 
+   Create subsampled set of sequences across several datasets, preserving taxonomic diversity yet optimizing for shared taxa for purposes of comparison and/or concatenation.
+How it works:
+  This script parses your input .fasta files. It requires that some taxonomic rank be appended to each sequence in the format outputted by AppendRank. Looking at the level of taxonomic rank specified by you, it looks to see what datasets include sequences sharing each unique rank (eg "which datasets have at least one sequence with order = "rodent"). It will then look at the specific species within that rank across all datasets, and return the single species found in the largest number of datasets (eg if mouse found in 3/4 datasets and rat in 2/4, it will return mouse as the chosen sequence). If there are several equally well represented options, it randomly choses one to return. For any datasets that have a sequence for the chosen species, that sequence will be written to that dataset's output file. For any dataset with at least one sequence of the specified rank, but none of the chosen species, a different species will be randomly chosen as a substitute to preserve taxonomic breadth (eg a dataset with rodent sequences but no mouse will have a random other rodent sequence written to file). This process will continue until the script has examined all strings of the rank specified in all input files, and chosen a representative species for each (and alternates if necessary). This ensures that in all datasets, sampling properly captures the breadth of the taxa represented. 
+  An information file will be created, including what ranks and species are shared across datasets, what representative species were chosen, and what (if any) substitutions were made. 
+___________________________
+Merge
+parser.add_argument("-me", "--merge", action="store", dest="ME", help ="This merges all listed fasta files into one new file. Type name for new file")
+Usage:	
+	-merge 
+	-me
+Example:
+	FEAST.py /path/to/directory "example.fasta example2.fasta" -me
+		This will merge all sequences from both example.fasta and example2.fasta in a new merged file. 
+Purpose:
+	Merge many files into one large file - more efficient than manual merging given a large number of .fasta files.
+How it works:
+	Just copies sequences over into one new merged file. Very simple.
+___________________________
+Information
+Usage:
+	-i
+	-information
+Purpose:
+	prints this file.
+  
+
+
