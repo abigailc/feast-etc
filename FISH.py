@@ -1,7 +1,7 @@
 #!/usr/bin/python
 #this is a conglomerate of fasta-fixing scripts, now called FISH (FASTA ID SWAPPING HELPER) because lol i can acronym.
 ##
-#last edit abigailc@stupidnamelessMac Sept 7 2016
+#last edit abigailc@Actaeon Sept 7 2016
 
 #things this doesn't do: play super nice with accession numbers instead of GI numbers. probably easy to convert, (see that one script that one time), but meh
 #do it later.

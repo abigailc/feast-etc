@@ -1,19 +1,36 @@
 #!/usr/bin/python
 
-# last update jun 9 2016 @abigailc
+# last update sept 12 2016   @abigailc
+# some changes to Shorten/ShortenKeep to remove + = and \
+# some comments added.
 
 pfamdatabasedir = "/home/abigail/Downloads/PfamScan/PfamData/"
 
 # edit the above to point to the directory on your machine that contains
-# pfam database files (eg pfam-A.hmm).
+# pfam database files (eg pfam-A.hmm) if you plan on running pfam locally
+# (not required)
 
-#___________________asfunctions____
 
+# this script has been cobbled together from around 15 seperate scripts that were created as I was learning python...
+# sorry for the huge amount of spaghetti.
+
+
+# if add taxonomy errors, be sure you are connected to the internet and also have XMLLINT.
+# if entire program errors, check you are running python 2.7
+# if you are running on 3. it might work if you remove all instances of """ such as the print information bit.
+# this script will likely be replaced soon-ish by things using classes and
+# persistant storage of seqs.
+
+# hahahaha so many functions_lol why did i not use a reasonable structure.___
+
+
+# this runs MultiDatasetSubSampling.. all it does it wrap MDSevery inside
+# an open file.
 
 def MultiDataSub(inputstr, inlist, indirectory):
-
+        # setting a bunch of variables here, instead of below the parser, for
+        # ease of understanding that section
     ins = inputstr.split(",")
-
     inrank = ins[0]
     innum = ins[1]
     if "strain" in inputstr:
@@ -24,20 +41,18 @@ def MultiDataSub(inputstr, inlist, indirectory):
         NAdrop = "yes"
     else:
         NAdrop = "no"
-
+        # creating and opening the information file
     informationfile = "MultiSub_Info.txt"
     with open(informationfile, "w") as information:
 
         flist = inlist
+        # calling the actual program that will run the multi-dataset
+        # subsampler.
         nfl = MDSevery(flist, inrank, innum, strain, NAdrop, information)
     print("MDS done. Info at: " + informationfile)
     return (nfl)
 
 
-# SumTaxa
-# VetATree
-# contains PFAMS, SIMPLIFIES.
-# Splitting into each individual bit.
 # pfam in looks like PfamOnline("info", fasta) where info == "L, C_term N_term"
 
 def PfamSelect(info, fasta, directory):
@@ -50,7 +65,7 @@ def PfamSelect(info, fasta, directory):
     mode, domains = info.split(",")
     domainlist = domains.split()
     pfop = len(domainlist)
-
+    # run locally
     if mode == "L":
         # avoid fatal error
         print("Hopefully you remembered to set the Pfam Variable as described in the readme/info file, or have the pfamdatabase in your path.\nIf not local pfam will likely not work.")
@@ -73,6 +88,9 @@ def PfamSelect(info, fasta, directory):
         if pfop == 2:
             a = everythinglocal2(fasta, domainlist[0], domainlist[
                                  1], args.directory)
+        # run online
+        # you have to upload and save the files that are emailed to you
+        # yourself.
     if mode == "O":
         print("Pfam-vetting online!\nThis requires manual input - upload the file(s), and then save the generated pfam files in the indicated manner.\nSorry!")
         if pfop == 1:
@@ -80,6 +98,7 @@ def PfamSelect(info, fasta, directory):
         if pfop == 2:
             a = everythingnotlocal2(fasta, 4000, domainlist[
                                     0], domainlist[1], directory)
+        # run from already generated pfam file.
     if "F" in mode:
         mode, pfile = mode.split()
         if pfop == 1:
@@ -91,6 +110,7 @@ def PfamSelect(info, fasta, directory):
     return (a)
 
 
+# tiny wrappers. I don't remember why they exist.
 def ShortenKeep(fasta):
     ski = ShortenKeepInfo(fasta)
     return ski
@@ -101,16 +121,8 @@ def ShortenNoKeep(fasta):
     return skii
 
 
-# AppendRank
-# Extract
-# accepts any number of strings
-# doesn't currently have support for files containing one str per list, but that would be trivial to implement
-# with open(filename, "r") as old:
-#   listofquals = []
-#   for line in file:
-#       listofquals.append(line[:-1])
-# just put ^ that into Extract/Seperate, change help to say "type file
-# name" and send the resulting list to extract or sep instead of qualifier
+# wrapper. this calles extract (no capital) with keepone set to True or
+# False. Just a wrapper to get it to work merged in with everything else.
 def Extract(directory, fasta, info):
     print(info)
     qualifier = info.split()
@@ -120,6 +132,9 @@ def Extract(directory, fasta, info):
     else:
         keepone = False
     return(extract(directory, fasta, "Extracted", qualifier, keepone))
+
+# wrapper. this calls seperate with keepone set to True or False. just
+# compliance.
 
 
 def Seperate(directory, fasta, info):
@@ -133,10 +148,11 @@ def Seperate(directory, fasta, info):
 
 
 # SubSamp
-# this should work just like MDSS
 # so input will look like SubSampling(fasta, "inrank innum nadrop")
 # im arbitrarily setting NAnum to 1 b/c otherwise you might get a stupid
 # amount of things, and nobody got time to set that variable
+# if need be, add another variable to be passed through to change NAnum.
+# this is also basically a wrapper for the subsampleALL function SSAll.
 def SubSampling(fasta, info):
     inf = info.split()
     inrank = inf[0]
@@ -161,10 +177,12 @@ def SubSampling(fasta, info):
 # could turn last three into one fxn with optional switch eg the pfam function
 # like -remove AA/TX/GI
 # i like this idea
-# *consider making something that removed seqs of very different lengths from the rest
+# *consider making something that removed seqs of very different lengths from the rest#TODO
 
 # methods should be a string input consisting of "AA" "GI" "TX" or a combo
 # like "AA GI" or "AA GI TX" for all three operations.
+
+# this calls removeal functions based on what you passed it. wrapper.
 
 
 def Remove(fasta, methods):
@@ -179,16 +197,17 @@ def Remove(fasta, methods):
         infile = RemoveDupSeqIDs(infile)
     return (infile)
 
+#... i really couldn't tell you.
+# probably this just exists because it used to to something.
+# anyways, calls for merge with no sequence removal.
+
 
 def MergeMerge(inputlist, output):
-
     return(MergeNoRemove(output, inputlist))
 
 
-# to do
-# Compare
-#___________________oldscripts_____
-# Sum
+# Summarizes the taxa in a fasta file by rank, eg. "you have 3 bacteria
+# and one archaea"
 def SumTaxa(fasta, rank):
     countingtaxa = []
     number = int(rank) - 1
@@ -216,6 +235,7 @@ def SumTaxa(fasta, rank):
     for thing in counta:
         print("%s %s \n" % thing)
 
+# multidatasubsampling
 
 # Looking for shared taxa across several sets of gene sequences.
 ##
@@ -242,6 +262,10 @@ def SumTaxa(fasta, rank):
 # >1|2|3|4|5|sp_name|gi|num|etc
 # NOTE: this will keep 1 per order in each dataset, maximizing for
 # "shared" species (but always keeping representative breadth)
+
+# makes dictionaries of all the taxa in each dataset.
+
+
 def MDSfastatodic(fasta, rank, strain="no", na="no", information="na"):
     NAranks = []
     rspec = {}
@@ -284,6 +308,8 @@ def MDSfastatodic(fasta, rank, strain="no", na="no", information="na"):
     for naran in NAranks:
         information.write(naran + "\n")
     return rspec
+
+# compares those dictionaries
 
 
 def MDScomparedics(diclist, sampnum, information):
@@ -378,6 +404,8 @@ def MDScomparedics(diclist, sampnum, information):
 ##    print (subslist)
     return dictionaryRtoS
 
+# extracts the chosen sequences from each dataset
+
 
 def MDSextract(filein, outext, qualifier, keepone):
     filename, e = filein.split(".")
@@ -413,6 +441,9 @@ def MDSextract(filein, outext, qualifier, keepone):
                             newe.write(line)
 
     print("Finished!")
+
+# organizes all of the above MDS functions into a cohesive
+# multi-dataset-subsample.
 
 
 def MDSevery(fastalist, rank, num, strain, nastate, information):
@@ -546,6 +577,8 @@ def Shorten(filein):
               " sequences, unable to find Species_name in " + str(ucount))
         print("They were removed and saved to " + unknownerror + ".")
     return (writeto)
+
+# same as shorten but keeps more information
 
 
 def ShortenKeepInfo(filein):
@@ -1099,6 +1132,8 @@ def VetWrite(shfasta, hasDom, spfam, indomains):
     return outputfile
 
 
+#######WAY MORE WRAPPERS THAT AT SOME POINT DEALT WITH SOME SHIT LOL#####
+
 # SHORTPFAMVET will shorten, runpfam, vetseqs, make .fasta with two
 # verified domains
 def ShortPfamVet(shfasta, domain1, domain2):
@@ -1262,6 +1297,9 @@ def CountSeqs(fasta):
                 inc += 1
     return inc
 
+# this is what fetches taxonomy from NCBI. requires XMLLINT and an
+# internet connection.
+
 
 def AddRank(fasta, ranklist, dire):
     print ("Starting on file: " + fasta)
@@ -1389,6 +1427,8 @@ def extract(direct, filein, outext, qualifier, keepone):
     print("Finished!")
     return(filename + outext + ".fasta")
 
+# seperated sequences with "Qualifier" in seqID from those without it.
+
 
 def sep(direct, filein, outext, qualifier, keepone):
     import os
@@ -1445,6 +1485,8 @@ def sep(direct, filein, outext, qualifier, keepone):
         print("Finished!")
         return(filename + outext + ".fasta")
 # SubSample
+
+# uhh this is used in something. probably.
 
 
 def MakeLists(fasta, rank):
