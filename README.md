@@ -4,6 +4,7 @@ place for some of my scripts to go
 ones that work right now:
 
 FEAST Fasta Editing and Subsampling Tool
+
         It is useful for modifying and subsampling .fasta files based on seqid and taxonomic information.
         ___________________________
         Commands:
@@ -21,6 +22,7 @@ FEAST Fasta Editing and Subsampling Tool
                             concatenation purposes).
         Merge: creates a new .fasta file containing all sequences from all X input files.
 FISH Fasta Id Shortening Helper
+
         It is used to modify, fix, and/or shorten sequence IDs in fasta files and trees.
         ________________
         Commands:
@@ -38,8 +40,10 @@ FISH Fasta Id Shortening Helper
         WriteInfo: saves original, changed pair to be read later (if you need to change back ever, do it)
         
 Useful things:
-  Fasta class.unfinished, but good for coding small things with. keeps original seqIDs and seqs, allows modifications, can 
-              write new fasta.
-  MakeSpeciesTrees.py
-      Currently working on, will probably be somewhat specific to the engaging cluster @ mit.
+
+        Fasta class.
+                unfinished, but good for coding small things with. keeps original seqIDs and seqs, allows modifications, can 
+                write new fasta.
+        MakeSpeciesTrees.py
+                Currently working on, will probably be somewhat specific to the engaging cluster @ mit.
 
