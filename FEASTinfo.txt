@@ -8,7 +8,7 @@ Simplify/SimplifyKeep
 Remove
 PFAM
 AppendRanks
-Seperate
+Separate
 Extract
 SubSample
 Summarize

@@ -90,8 +90,8 @@ class Fasta:
         genenames = []
         for i in range(len(self.ids)):
             with open("Seq" + str(i), "w") as new:
-                new.write(">" + self.ids[i])
-                new.write(self.seqs[i])
+                new.write(">" + self.ids[i]+"\n")
+                new.write(self.seqs[i]+"\n")
                 name = re.sub("([^\|]*)(\|)(.*)", "\\1", self.ids[i])
                 geneflist.append("Seq" + str(i))
                 genenames.append(name)
@@ -204,8 +204,8 @@ class Fasta:
                         newseq = newseq + ("\n")
                     newseq = newseq + letter
                     count += 1
-                self.seqs.append(newseq)
-                self.original_seqs.append(newseq)
+                self.seqs.append(newseq.strip())
+                self.original_seqs.append(newseq.strip())
 
         print("Blasttofasta id/seq loading complete!")
 
@@ -310,6 +310,7 @@ class Fasta:
         #
 
     def gen_species_lists(self):
+        speclist = []
         for item in self.ids:
                             # item will be "Nostoc_punctiforme_PCC_73102|gi#|186468349" or "Blah|Rank|Nostoc_punctiforme_PCC_73102|gi#|186468349"
                             # for now, ignores anything that isn't Genus_species.
@@ -367,11 +368,12 @@ def correlate_ids(list_of_id_lists):
             if name in used:
                 pass
             else:
+                used.append(name)
                 id_index_list = []
                 id_index_list.append(ids)
                 # check the index of that id in each list and append to "id_index_list"
                 # if the id is not in that list, should append "NA"
-                for eachlist in list_of_ids_lists:
+                for eachlist in list_of_id_lists:
                     try:
                         index = eachlist.index(ids)
                     except ValueError:
@@ -381,6 +383,8 @@ def correlate_ids(list_of_id_lists):
                 output_list.append(id_index_list)
     # output list looks like:
     # outputlist = [ ["Cat",1,2,3,4] , ["Dog", 2,1,13,14] ]
+    print("Concat")
+    print(output_list)
     return output_list
 
 
@@ -400,7 +404,7 @@ def Concatenate(listoffastafiles, new_cc_fasta_name, strain_limit=False):
     # Fasta object (pass true/false of strain control if need be)
     for f in fasta_class_list:
         f.gen_original_lists(f.name)
-        species_list = f.gen_species_lists(strain_limit)
+        species_list = f.gen_species_lists()
         # todo:make this function
         list_species_lists.append(species_list)
     # so now we have a list of species from each Fasta, and we need to correlate them. should be it's own matching function?
@@ -415,13 +419,15 @@ def Concatenate(listoffastafiles, new_cc_fasta_name, strain_limit=False):
     # this part will create a new, concatenated .fasta file
     # requires indexed_ids_list, fasta_class_list, function that returns
     # number of sites. self.number_of_sites
+    
     with open(new_cc_fasta_name, "w") as new:
         for item in indexed_ids_list:
             # do i want to print species_name to file, or full
             # taxonomy? for now, just species_name is gunna happen,
             # but easy to swap i think
-            new.write(">" + item[0])
+            new.write(">" + item[0].strip()+"\n")
             fas_num = 0
+            allseq = ""
             for fas in fasta_class_list:
                 fas_num += 1
                 # fas_num keeps track of what number fasta we are on, which
@@ -432,24 +438,37 @@ def Concatenate(listoffastafiles, new_cc_fasta_name, strain_limit=False):
                 # if search_index is NA, generate a str of "-" that is n
                 # characters long, where n is the return from
                 # fas.number_of_sites
-                if seach_index == "NA":
-                    ndash = fas.number_of_sites
+                if search_index == "NA":
+                    ndash = fas.number_of_sites()
                     retreived_seq = ""
-                    for i in range(ndash):
-                        retreived_seq = retreived_seq + ("-")
+                    for i in range(int(ndash)):
+                        if i == 0:
+                            pass
+                        else:
+                            retreived_seq = retreived_seq + ("-")
                 else:
                     retreived_seq = fas.seqs[search_index]
                     # retreived_seq wil be something like "the 22nd sequence in
                     # object Fas's sequence list... " or "BLAHSEQUENCEDATA"
-                new.write(retreived_seq)
+                retreived_seq = re.sub("\n", "", retreived_seq)
+                count = 0
+                allseq = allseq + retreived_seq
+            newseq = ""
+            for letter in allseq:
+                if count > 79:
+                    count = 0
+                    newseq = newseq + ("\n")
+                newseq = newseq + letter
+                count += 1
+            new.write(newseq.strip()+"\n")
                 # there might be too many line-breaks in this fashion. if so,
                 # concatenated all retreived_seqs and then only call write()
                 # once.
-        print(
-            "Should be finished generating new concatedated fasta at: " + new_cc_fasta_name)
+        print("Should be finished generating new concatenated fasta at: " + new_cc_fasta_name)
     print("done w cc gen!")
     return new_cc_fasta_name
 
+#########################MUSCLE STUFF####################
 
 
 def muscle_align_on_cluster(end_file_list, prefix):
@@ -463,13 +482,20 @@ def muscle_align_on_cluster(end_file_list, prefix):
     b = gen_correlate_file(end_file_list, prefix+"_Corr.txt")
     end_file_list.append(a)
     end_file_list.append(b)
+    direct = os.getcwd()
+
+
     move_to_cluster(end_file_list, clus_path)
     print("everything should be generated and on the cluster")
     os.system("ssh -l abigailc -i ~/.ssh/id_rsa eofe5.mit.edu 'cd ~/Species_Trees/"+prefix+";echo $PWD;sbatch "+a+"'")
     finished = "start"
     #to see if the run is complete, see if each new file has been generated. check every 5 minutes for muscle.
+    
     while finished is not True:
         for item in aligned_list:
+            #try and move it home
+            os.system("scp "+clus_head[:-1]+clus_path+"/"+item+" "+direct)
+            #see if it got moved home.
             exists = os.path.isfile(item)
             if exists is True:
                 finished = "yes"
@@ -480,7 +506,8 @@ def muscle_align_on_cluster(end_file_list, prefix):
             print("Should be done!")
             finished = True
         else:
-            time.sleep(300)
+            #wait five minutes and then try again.
+            time.sleep(30)
     #now, concatenate the output file. when doing large batches, might want to move each to new folder.... but maybe not for now.
     print("Beginning concatenation")
     c = Concatenate(aligned_list, prefix+"_CC.fasta")
@@ -492,22 +519,23 @@ def muscle_align_on_cluster(end_file_list, prefix):
     
 def gen_muscle_script(scriptfile, indexname, n, Jobname):
     #currently assuming you are running in the dir that files are in and should be returned to.
-    direct = os.getcwd()
-    host = socket.gethostname()
-    user = getpass.getuser()
-    addr = user+"@"+host+":"+direct
+    # direct = os.getcwd()
+    # host = socket.gethostname()
+    # user = getpass.getuser()
+    # addr = user+"@"+host+":"+direct
     #figure out how many need to be run. n = len(listoffilesinindex). n
     #figure out a name - scriptfile
     #figure out path to index file. indexname
     #thats it. just print the script. return its filename, which will need to be added to list of things to be moved to the cluster.
+    addr = "PLACEHOLDER"
     
 
 ##example script
     a =  """#!/bin/bash                                                                                             
 #SBATCH -p sched_mit_g4nier                                                                             
 #SBATCH -t 0-00:50:00                                                                                   
-#SBATCH -J """+Jobname+"""                                                                                         
-##SBATCH -o Jobname.out
+#SBATCH -J Mus"""+Jobname+"""                                                                                         
+##SBATCH -o Mus"""+Jobname+""".out
 #SBATCH --array=1-"""+n+"""
 
 . /etc/profile.d/modules.sh
@@ -527,7 +555,7 @@ echo $THE_INPUT_FILE$ENDING
 
 muscle -in $THE_INPUT_FILE -out $THE_INPUT_FILE$ENDING
 
-scp $THE_INPUT_FILE$ENDING """+addr+"""
+##scp $THE_INPUT_FILE$ENDING """+addr+"""
 
 exit"""
     with open(scriptfile, "w") as script:
@@ -537,8 +565,54 @@ exit"""
 
 
 
-def gen_raxml_script():
-    pass
+def gen_raxml_script(scriptfile, indexname, n, Jobname):
+    #currently assuming you are running in the dir that files are in and should be returned to.
+    # direct = os.getcwd()
+    # host = socket.gethostname()
+    # user = getpass.getuser()
+    # addr = user+"@"+host+":"+direct
+    #figure out how many need to be run. n = len(listoffilesinindex). n
+    #figure out a name - scriptfile
+    #figure out path to index file. indexname
+    #thats it. just print the script. return its filename, which will need to be added to list of things to be moved to the cluster.
+    
+
+##example script
+    a =  """#!/bin/bash                                                                                             
+#SBATCH -p sched_mit_g4nier                                                                             
+#SBATCH -t 0-10:00:00    
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=20
+# #SBATCH --exclusive                                                                                   
+#SBATCH -J RAX"""+Jobname+"""   
+#SBATCH -o RAX"""+Jobname+""".out                                                                                         
+#SBATCH --array=1-"""+n+"""
+
+. /etc/profile.d/modules.sh
+module add engaging/RAxML/8.2.9
+##gets my array id, which is needed for use below. this will be, i think, a number like 1,2,3 etc
+MY_ARRAY_ID=$SLURM_ARRAY_TASK_ID
+echo $MY_ARRAY_ID
+
+## given an index file formatted                                                                        
+## <index> <filename>                                                                                   
+## produce the filename for given index                                                                 
+THE_INDEX="""+indexname+"""
+THE_INPUT_FILE=$( cat $THE_INDEX | grep "^$MY_ARRAY_ID " | awk '{print $2}' )
+echo $THE_INPUT_FILE
+ENDING=_Muscle.fasta
+echo $THE_INPUT_FILE$ENDING
+
+NEW=${THE_INPUT_FILE%%.*}
+echo $NEW
+  
+raxmlHPC-PTHREADS-AVX -T 20 -f a -m PROTGAMMALGF -p 12345 -x 12345 -#100 -n $NEW -s $THE_INPUT_FILE         
+
+exit"""
+    with open(scriptfile, "w") as script:
+        script.write(a)
+    return scriptfile
+
 
 
 def gen_correlate_file(list_of_input_files, corr_file):
@@ -642,7 +716,7 @@ def move_from_cluster():
 
 
 
-def MakeSpeciesTree(species_names_file, gene_sequences_file, prefix=False):
+def MakeSpeciesTreeCC(species_names_file, gene_sequences_file, prefix=False):
 
 
     # species_names_file should look like this:
@@ -788,8 +862,8 @@ def MakeSpeciesTree(species_names_file, gene_sequences_file, prefix=False):
 
 
                 ############JUST FOR NOW######
-                continue
-            ###############
+                ##continue
+                ###############
                 os.system("blastp -query " + QUERY + " -remote -db nr -out " + OUTPUT +
                           " -max_target_seqs 5 -entrez_query " + ENTREZ + " -evalue 1e-4 -outfmt \"6 sallseqid salltitles sseq\"")
                 current_overall_fasta.blast2fasta(OUTPUT, ENTREZ, 1)
@@ -845,12 +919,77 @@ def MakeSpeciesTree(species_names_file, gene_sequences_file, prefix=False):
 
 
 
+def get_multiple_concat_alignments(list_of_whatever):
+    #pass in multiple sets of [species_list, genes_list] and will run blast, align on cluster, concatenate.
+    #outputs a listof concatenated species tree files.
+    list_of_ccs = []
+    for item in list_of_whatever:
+        species_names_file = item[0]
+        print(len(item))
+        gene_sequences_file = item[1]
+        if len(item) == 3:
+            prefix = item[2]
+            print(prefix)
+        a = MakeSpeciesTreeCC(species_names_file, gene_sequences_file, prefix)
+        list_of_ccs.append(a)
+    return list_of_ccs
+    
+
+def raxml_run_on_cluster(cc_file_list, prefix):
+    #this creates dir you will use on the cluster.
+    tree_list = []
+    for item in cc_file_list:
+        #this is going to be something different... like raxml_bipartitions.blah
+        alist = item.split(".")
+        athing = alist[0]
+        tree_list.append("RAxML_bipartitions."+athing)
+    print(tree_list)
+    check_directory_existance(prefix, ssh_inst)
+    clus_path = "/Species_Trees/"+prefix
+    a = gen_raxml_script(prefix+"_Rax_Sc.sh", "~"+clus_path+"/"+prefix+"_Rax_Corr.txt", str(len(cc_file_list)), prefix+"job")
+    b = gen_correlate_file(cc_file_list, prefix+"_Rax_Corr.txt")
+    cc_file_list.append(a)
+    cc_file_list.append(b)
+    direct = os.getcwd()
+    move_to_cluster(cc_file_list, clus_path)
+    print("everything should be generated and on the cluster. starting raxml.")
+    os.system("ssh -l abigailc -i ~/.ssh/id_rsa eofe5.mit.edu 'cd ~/Species_Trees/"+prefix+";echo $PWD;sbatch "+a+"'")
+    finished = "start"
+    #to see if the run is complete, see if each new file has been generated. check every 5 minutes for muscle.
+    while finished is not True:
+        for item in tree_list:
+            #try and move it home
+            os.system("scp "+clus_head[:-1]+clus_path+"/"+item+" "+direct)
+            #see if it got moved home.
+            exists = os.path.isfile(item)
+            if exists is True:
+                finished = "yes"
+            else:
+                finished = False
+                break
+        if finished == "yes":
+            print("Should be done!")
+            finished = True
+        else:
+            #wait an hour and then try again.
+            time.sleep(3600)
+    c = tree_list
+    print(tree_list)
+    print("RAXML finished, tree(s) should exist locally")
+    return c
+
 
 
 
 
 
 # run the shit
+
+
+
+###############
+#PARSER #TODO##
+###############
 import os
 import socket
 import getpass
@@ -859,8 +998,15 @@ import time
 
 
 os.chdir("/Users/abigailc/Dropbox/ClusterFriend/Cara/")
-MakeSpeciesTree("Species_File_Test.txt", "Bacterial_Ribo.fasta", "Example")
-print("super done")
 
-##errr w call gen muscle script
-###err w gen fastas if in pre-screening
+
+
+
+prefix = "Initial_Ribo"
+spec_file = "Species_File_Test.txt"
+gene_file = "Bacterial_Ribo.fasta"
+
+cc_files = get_multiple_concat_alignments([[spec_file, gene_file, prefix]])
+raxml_run_on_cluster(cc_files, prefix)
+
+print("super done")
