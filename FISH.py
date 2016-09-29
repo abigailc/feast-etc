@@ -6,15 +6,23 @@
 #things this doesn't do: play super nice with accession numbers instead of GI numbers. probably easy to convert, (see that one script that one time), but meh
 #do it later.
 
+
+#when you create a Fasta object, initialize it with sequence ID and Data by using either gen_original_lists or blast2fasta
 class Fasta:
 	def __init__(self, name):
-		#all ids should be stripped and have ">" removed for reasons.
-		#for now, sequences do not have any stripping applied
+		#all ids and seqs should be stripped of leading and trailing whitespace and have ">" removed for reasons.
+		#this is the name of the fasta, it can be anything, i'm not really using it right now.
 		self.name = name
+		#this is the to-be-modified version of sequence IDs and sequence-Data
+		# ALWAYS keep IDS and SEQS the same length. id[1] should ALWAYS correspond to seq[1].
 		self.ids = []
+		self.seqs = []
+		# these are the original SEQids and Sequences. They should never be modified after generation in gen_original_lists or blast_to_fasta
 		self.original_ids = []
 		self.original_seqs = []
-		self.seqs = []
+
+	def ret_name(self):
+		return self.name
 	def gen_original_lists(self, fastaname):
 		with open(fastaname) as fastafile:
 			for line in fastafile:
