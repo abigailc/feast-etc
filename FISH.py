@@ -18,12 +18,12 @@ class Fasta:
 	def gen_original_lists(self, fastaname):
 		with open(fastaname) as fastafile:
 			for line in fastafile:
-                                if "\n" == line:
-                                        pass
+				if "\n" == line:
+					pass
 				if ">" in line:
 					#write the previous AA seq
 					try:
-                                                AAseq=AAseq.strip()
+						AAseq=AAseq.strip()
 						self.seqs.append(AAseq)
 						self.original_seqs.append(AAseq)
 					except:
@@ -38,7 +38,7 @@ class Fasta:
 					self.original_ids.append(newline.strip())
 				else:
 					AAseq = AAseq+line
-                        AAseq=AAseq.strip()
+					AAseq=AAseq.strip()
 			#catch the last AAseq pass
 			self.seqs.append(AAseq)
 			self.original_seqs.append(AAseq)
@@ -55,23 +55,23 @@ class Fasta:
 			self.ids[index] = newline
 			#done
 		print("Manual shorten complete")
-        def gen_species_lists(self):
-                speclist = []
-                for item in self.ids:
-                                    # item will be "Nostoc_punctiforme_PCC_73102|gi#|186468349" or "Blah|Rank|Nostoc_punctiforme_PCC_73102|gi#|186468349"
-                                    # for now, ignores anything that isn't Genus_species.
-                                    # for example, ignores strain, ., things with an extra
-                                    # word, etc.
-                    taxon = re.sub("([^_]*)([A-Z][a-z]*_[a-z]*)(.*)", "\\2", item)
-                    if "#" in taxon:
-                        print ("TAXON error in gen_species_lists():" + taxon)
-                    speclist.append(taxon)
-                return speclist
+	def gen_species_lists(self):
+			speclist = []
+			for item in self.ids:
+								# item will be "Nostoc_punctiforme_PCC_73102|gi#|186468349" or "Blah|Rank|Nostoc_punctiforme_PCC_73102|gi#|186468349"
+								# for now, ignores anything that isn't Genus_species.
+								# for example, ignores strain, ., things with an extra
+								# word, etc.
+				taxon = re.sub("([^_]*)([A-Z][a-z]*_[a-z]*)(.*)", "\\2", item)
+				if "#" in taxon:
+					print ("TAXON error in gen_species_lists():" + taxon)
+				speclist.append(taxon)
+			return speclist
 
 	def common_shorten(self, verbose = False):
 		#TODO: allow input of manual shorten-pairs, possibly in new function
 		#put your conversions of common strings to shorten here
-                inte = 0
+		inte = 0
 		for item in self.ids:
 			newline = item
 			index = self.ids.index(item)
@@ -84,49 +84,49 @@ class Fasta:
 			newline = re.sub("Fungi\|", "Fun|", newline)
 			newline = re.sub("Viridiplantae\|", "Vir|", newline)
 			newline = re.sub("Metazoa\|", "Met|", newline)
-                        newline = re.sub("mycetes\|", "myc|", newline)
+			newline = re.sub("mycetes\|", "myc|", newline)
 			newline = re.sub("mycetales\|", "mycl|", newline)
 			newline = re.sub("mycetaceae\|", "mycc|", newline)
-                        newline = re.sub("Methanomassiliicoccaceae\|", "Methmasscoc|", newline)
-                     
+			newline = re.sub("Methanomassiliicoccaceae\|", "Methmasscoc|", newline)
+					 
 			#newline = re.sub("bacteriales\|", "bacles|", newline)
 			#newline = re.sub("bacteriales\|", "bacles|", newline)
 			#newline = re.sub("[+=\.]", "", newline)
 			newline = re.sub("_enterica_subsp_enterica_serovar", "", newline)
-                        if newline == item:
-                                pass
-                        else:
-                                if verbose is True:
-                                        print(item)
-                                        print(newline)
-                                inte +=1
+			if newline == item:
+				pass
+			else:
+				if verbose is True:
+					print(item)
+					print(newline)
+					inte +=1
 			self.ids[index] = newline
 		print("Common shorten complete")
-                print("Fixed "+str(inte)+" lines")
+		print("Fixed "+str(inte)+" lines")
 		#this should have successfully modified the self.ids list to contain shortened sequence ids.
 	def length_check(self, length, verbose):
 		#needs to pass in a number... charnum
 		toolong = 0
-                length = int(length)
-                print("trying to shorten to length "+str(length))
+		length = int(length)
+		print("trying to shorten to length "+str(length))
 		for item in self.ids:
 			index = self.ids.index(item)
 			linelength = len(item)
-                        newline= item
+			newline= item
 			if int(linelength) > int(length):
 				toolong +=1
-                         
+						 
 				#change all 12 to 14 if include \n at end of seqids... for now, we are not considering them.
 				gi = newline[-12:]
 				rest = re.sub("([^#]*)(#)(.*)", "\\1", newline)
 				nogi = rest[:-3]
 				newl = length-13
-                                #12 instead of 12 to leave space for adding a bar.
+								#12 instead of 12 to leave space for adding a bar.
 				newnogi = nogi[:newl]
-                                if newnogi[-1:] == "|":
-                                        pass
-                                else:
-                                        newnodi = newnogi[:-1]
+				if newnogi[-1:] == "|":
+					pass
+				else:
+					newnodi = newnogi[:-1]
 				newline = newnogi+"|"+gi
 				if verbose == True:
 					print ("LENGTHERROR: "+item[:length]+" || "+item[length:])
@@ -152,11 +152,11 @@ class Fasta:
 					pass
 				else:
 					if verbose == True:
-                                                if letter == "-":
-                                                        pass
-                                                else:
-						        print("LETTERERROR: "+letter)
-						        anerror = "yes"
+						if letter == "-":
+							pass
+						else:
+							print("LETTERERROR: "+letter)
+							anerror = "yes"
 					errletters.append(letter)
 					letter = ""
 					lerr +=1
@@ -373,12 +373,32 @@ class Fasta:
 				new.write(">"+self.ids[i].strip()+"\n")
 				# print(i)		#
 				#unclear if this needs a "\n" after it... check.#TODO
-                                #print(self.seqs)
-                                #print(type(self.seqs[i]))
+								#print(self.seqs)
+								#print(type(self.seqs[i]))
 				new.write(self.seqs[i]+"\n")
 		print("Finished, your new fasta file is located at "+newfasta)
 		#done
-
+	def extract(self, list_of_keeps):
+		keep_ids = []
+		keep_seq = []
+		success = 0
+		suc_num = len(list_of_keeps)
+		for item in list_of_keeps:
+			item = item.strip()
+			for thing in self.original_ids:
+				if thing == item:
+					keep_ids.append(thing)
+					index = self.original_ids.index(item)
+					seq = self.original_seqs[index]
+					keep_seq.append(seq)
+					success += 1
+		if suc_num == success:
+			print("100% complete extract")
+		else:
+			print(str(success)+"out of "+str(suc_num)+" sequences extracted")
+		self.ids = keep_ids
+		self.seqs = keep_seq
+		
 	def swap_in_newick(self, old_newick_name, new_file_name):
 		#this replaces the tip names in a newick file. sometimes works on nexus files too, but I havent extensively tested it.
 		newick = old_newick_name
@@ -414,130 +434,130 @@ class Fasta:
 				inf.write(self.ids[i]+"\n")
 		print("Info file was generated. Named "+info_file_name)
 		#done
-                
-        def write_one_seq_per_file(self):
-            geneflist = []
-            genenames = []
-            for i in range(len(self.ids)):
-                with open("Seq" + str(i), "w") as new:
-                    new.write(">" + self.ids[i]+"\n")
-                    new.write(self.seqs[i]+"\n")
-                    name = re.sub("([^\|]*)(\|)(.*)", "\\1", self.ids[i])
-                    geneflist.append("Seq" + str(i))
-                    genenames.append(name)
-            return geneflist, genenames
-            print("one per file generated")
+				
+	def write_one_seq_per_file(self):
+		geneflist = []
+		genenames = []
+		for i in range(len(self.ids)):
+			with open("Seq" + str(i), "w") as new:
+				new.write(">" + self.ids[i]+"\n")
+				new.write(self.seqs[i]+"\n")
+				name = re.sub("([^\|]*)(\|)(.*)", "\\1", self.ids[i])
+				geneflist.append("Seq" + str(i))
+				genenames.append(name)
+		return geneflist, genenames
+		print("one per file generated")
 
-        def number_of_sites(self):
-            return len(self.original_seqs[0])
+	def number_of_sites(self):
+		return len(self.original_seqs[0])
 
-        def shorten(self):
-            unk = "no"
-            normal = 0
-            ucount = 0
-            for line in self.ids:
-                index = self.ids.index(line)
+	def shorten(self):
+		unk = "no"
+		normal = 0
+		ucount = 0
+		for line in self.ids:
+			index = self.ids.index(line)
 
-                # this removes words in brackets that aren't Species_name
-                # and then changes NCBI's default naming scheme to be
-                #>Species_name|gi#|#########
-                # and makes a list of all gi nums and all
-                # duplicates
-                number = re.sub(
-                    "(gi)(\|)([0-9]*)(\|)([A-Za-z]*)(\|)(.*)(\[\'?[A-Z]?[a-z]* ?.*\])(.*)", "\\3", line)
-                num = number.strip()
-                edit1 = re.sub(
-                    "(gi)(\|)([0-9]*)(\|)([A-Za-z]*)(\|)(.*)(\[\'?[A-Z]?[a-z]* ?.*\])(.*)", "\\8\\2\\1#|\\3", line)
-                if "[" in edit1:
-                    unk = "no"
-                    normal += 1
-                edit2 = re.sub("[\[\]]", "", edit1)
-                edit3 = re.sub("[:;=,/\+'\.\(\)]", "_", edit2)
-                edit4 = re.sub(" ", "_", edit3)
-                edit4 = re.sub("__", "_", edit4)
-                if unk == "no":
-                    self.ids[index] = edit4
-                else:
-                    print("Unknown Species in ID:" + line)
+			# this removes words in brackets that aren't Species_name
+			# and then changes NCBI's default naming scheme to be
+			#>Species_name|gi#|#########
+			# and makes a list of all gi nums and all
+			# duplicates
+			number = re.sub(
+				"(gi)(\|)([0-9]*)(\|)([A-Za-z]*)(\|)(.*)(\[\'?[A-Z]?[a-z]* ?.*\])(.*)", "\\3", line)
+			num = number.strip()
+			edit1 = re.sub(
+				"(gi)(\|)([0-9]*)(\|)([A-Za-z]*)(\|)(.*)(\[\'?[A-Z]?[a-z]* ?.*\])(.*)", "\\8\\2\\1#|\\3", line)
+			if "[" in edit1:
+				unk = "no"
+				normal += 1
+			edit2 = re.sub("[\[\]]", "", edit1)
+			edit3 = re.sub("[:;=,/\+'\.\(\)]", "_", edit2)
+			edit4 = re.sub(" ", "_", edit3)
+			edit4 = re.sub("__", "_", edit4)
+			if unk == "no":
+				self.ids[index] = edit4
+			else:
+				print("Unknown Species in ID:" + line)
 
-        def blast2fasta(self, blastlist, ENTREZ=False, num=False):
-            # entrez is used to ensure that sequence saved uses correct TAXON, esp. if sequence is a MULTISPECIES entry.
-            # entrex should be somethin like "Mycobacterium triplex"
-            # num is how many sequences to write. for species trees, we almost certainly only want one.
-            # for converting full downloaded .fastas, we will want all of them (default = False means to do all of them)
-            # Converts blast outfmt "6 sseqid stitle sseq" to original lists if
-            # entrez = false
+	def blast2fasta(self, blastlist, ENTREZ=False, num=False):
+		# entrez is used to ensure that sequence saved uses correct TAXON, esp. if sequence is a MULTISPECIES entry.
+		# entrex should be somethin like "Mycobacterium triplex"
+		# num is how many sequences to write. for species trees, we almost certainly only want one.
+		# for converting full downloaded .fastas, we will want all of them (default = False means to do all of them)
+		# Converts blast outfmt "6 sseqid stitle sseq" to original lists if
+		# entrez = false
 
-            #... now converting outfmt "6 sallseqid salltitles sseq" to sh fasta with selection of proper gi/acc/taxon
-            # this should take format " " blast names and replace them with the proper
-            # fasta shit
-            ernum = 0
-            # we open each file in a unique call to blast2fasta. files should be
-            # deleted afterwards.
-            bf = open(blastlist, 'r')
-            error = 0
-            end = "no"
-            for line in bf:
-                if end == "yes":
-                    break
-                # gi|738518257|ref|WP_036466735.1|;gi|620038207|emb|CDO87046.1|   50S
-                # ribosomal protein L15 [Mycobacterium triplex]<>50S ribosomal protein L15
-                # [Mycobacterium triplex]
+		#... now converting outfmt "6 sallseqid salltitles sseq" to sh fasta with selection of proper gi/acc/taxon
+		# this should take format " " blast names and replace them with the proper
+		# fasta shit
+		ernum = 0
+		# we open each file in a unique call to blast2fasta. files should be
+		# deleted afterwards.
+		bf = open(blastlist, 'r')
+		error = 0
+		end = "no"
+		for line in bf:
+			if end == "yes":
+				break
+			# gi|738518257|ref|WP_036466735.1|;gi|620038207|emb|CDO87046.1|   50S
+			# ribosomal protein L15 [Mycobacterium triplex]<>50S ribosomal protein L15
+			# [Mycobacterium triplex]
 
-                gis = re.sub("(.*)(\t)(.*])(\t)([A-Z-]*)", "\\1", line)
-                names = re.sub("(.*)(\t)(.*])(\t)([A-Z-]*)", "\\3", line)
-                seq = re.sub("(.*)(\t)(.*])(\t)([A-Z-]*)", "\\5", line)
-                # this removes sequences with no Species_name given, so as to avoid errors
-                # downstream
-                if "\t" in gis:
-                    error += 1
-                    print("ERROR in blast parsing: " + line)
-                    continue
-                else:
-                    gilist = gis.split(";")
-                    namelist = names.split("<>")
-                    if ENTREZ is False:
-                        index = 0
-                    else:
-                        ENTREZ = ENTREZ.strip("\"")
-                        for item in namelist:
-                            if ENTREZ in item:
-                                index = namelist.index(item)
-                    try:
-                        seqi = gilist[index].strip() + namelist[index].strip()
-                        #end = "yes"
-                    except UnboundLocalError:
-                        error += 1
-                        print("Name error... might fix")
-                        if error == 5:
-                            print("Serious ENTREZ error:")
-                            print(ENTREZ)
-                            print(namelist)
-                            print("This gene wasn't found in this taxon, skipping")
-                            break
-                        continue
-                        # goes to next line, abandoning this one
-                    seqid = re.sub("[ ]", "_", seqi)
-                    # strips for .fasta format
-                    seqid = seqid.strip()
-                    seqid = seqid.strip(">")
-                    # add the new sequence id to the list.
-                    self.ids.append(seqid)
-                    self.original_ids.append(seqid)
-                    # the new sequence
-                    slist = []
-                    count = 0
-                    newseq = ""
-                    for letter in seq:
-                        if count > 79:
-                            count = 0
-                            newseq = newseq + ("\n")
-                        newseq = newseq + letter
-                        count += 1
-                    self.seqs.append(newseq.strip())
-                    self.original_seqs.append(newseq.strip())
+			gis = re.sub("(.*)(\t)(.*])(\t)([A-Z-]*)", "\\1", line)
+			names = re.sub("(.*)(\t)(.*])(\t)([A-Z-]*)", "\\3", line)
+			seq = re.sub("(.*)(\t)(.*])(\t)([A-Z-]*)", "\\5", line)
+			# this removes sequences with no Species_name given, so as to avoid errors
+			# downstream
+			if "\t" in gis:
+				error += 1
+				print("ERROR in blast parsing: " + line)
+				continue
+			else:
+				gilist = gis.split(";")
+				namelist = names.split("<>")
+				if ENTREZ is False:
+					index = 0
+				else:
+					ENTREZ = ENTREZ.strip("\"")
+					for item in namelist:
+						if ENTREZ in item:
+							index = namelist.index(item)
+				try:
+					seqi = gilist[index].strip() + namelist[index].strip()
+					#end = "yes"
+				except UnboundLocalError:
+					error += 1
+					print("Name error... might fix")
+					if error == 5:
+						print("Serious ENTREZ error:")
+						print(ENTREZ)
+						print(namelist)
+						print("This gene wasn't found in this taxon, skipping")
+						break
+					continue
+					# goes to next line, abandoning this one
+				seqid = re.sub("[ ]", "_", seqi)
+				# strips for .fasta format
+				seqid = seqid.strip()
+				seqid = seqid.strip(">")
+				# add the new sequence id to the list.
+				self.ids.append(seqid)
+				self.original_ids.append(seqid)
+				# the new sequence
+				slist = []
+				count = 0
+				newseq = ""
+				for letter in seq:
+					if count > 79:
+						count = 0
+						newseq = newseq + ("\n")
+					newseq = newseq + letter
+					count += 1
+				self.seqs.append(newseq.strip())
+				self.original_seqs.append(newseq.strip())
 
-            print("Blasttofasta id/seq loading complete!")
+		print("Blasttofasta id/seq loading complete!")
 
 
 #this hasn't been implemented in class fasta, so I am leaving it commented out.. subtrees file might be easily replaced using replace.newick but it might take literally ages... unclear.
@@ -618,14 +638,14 @@ if __name__ == "__main__":
 	#options to load changes from another file
 	parser.add_argument("-i", "--infofile", action = "store", default = False, help="Provide an Info File (as generated by this script previously) to pull original and new sequences from")
 
-        
+		
 	#options#  to check,fix,edit,etc the seqs or seqids
 	# -length
 	# -duplicate
 	# -weirdaa
 	# -weirdID
 	parser.add_argument("-sh", "--shorten", action = "store_true", default=False, help="shortens blast (from online) seqIDs")
-        parser.add_argument("-b2f", "--blast2fasta", action = "store_true", default=False, help="Blast+ output -> fasta download format BUGGY")
+	parser.add_argument("-b2f", "--blast2fasta", action = "store_true", default=False, help="Blast+ output -> fasta download format BUGGY")
 	parser.add_argument("-l", "--length", action = "store", default=False, help="Provide a max length for your sequenceIDs")
 	parser.add_argument("-d", "--duplicates", action = "store_true", help="Flag causes identical seqIDs to be numbered 1 2 3 etc to prevent program confusion")
 	parser.add_argument("-fid", "--fixID", action = "store_true", help="Flag scans SeqIDs and removes weird characters like += etc")
@@ -660,8 +680,7 @@ if __name__ == "__main__":
 
 #actual work flow
 
-#change dir if desired
-        print(args.fasta)
+#change dir if desiredprint(args.fasta)
 	try:
 		os.chdir(args.directory)
 		if args.verbose == True:
@@ -676,10 +695,10 @@ if __name__ == "__main__":
 
 	MyFasta = Fasta("MyFastaName")
 
-        if args.blast2fasta != False:
-                MyFasta.blast2fasta(args.fasta)
-        else:
-	        MyFasta.gen_original_lists(args.fasta)
+	if args.blast2fasta != False:
+		MyFasta.blast2fasta(args.fasta)
+	else:
+		MyFasta.gen_original_lists(args.fasta)
 
 
 	#this should be done in conjunction w / write fasta or replace newick.
@@ -694,8 +713,8 @@ if __name__ == "__main__":
 	if args.fixAA == True:
 		MyFasta.weird_AA_check(verb)
 	#shortening calls
-        if args.shorten == True:
-                MyFasta.shorten()
+		if args.shorten == True:
+				MyFasta.shorten()
 
 	if args.common == True:
 		MyFasta.common_shorten(verb)

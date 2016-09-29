@@ -3,13 +3,15 @@
 #version 4 of tree parser, with support for running and comparing each subtree and picking two most divergent non-transfer sequences.
 #sept 20 2016 abigailc@actaeon
 
-#added support for printing fast_subtree, fasta of sttips, list of species, superkingdom
-#added send-to-make-species -tree-support
-#added make-raxml support
+#added support for printing fast_subtree, fasta of sttips, list of species, superkingdom YES
+#added send-to-make-species -tree-support YES
+#added make-raxml support YES
 #added ranger compare support
 #added SS after ranger support.
 
+####you need to have prettytable package installed.
 
+#warning - spaghetti code abounds for most things added before august/september.
 
 #jun 9 added r script to get subtrees
 #jun 17 fixed repeated last tree error, added min value
@@ -23,6 +25,11 @@
 #and then counting the number of str outside of best clade, and comparing to a para/artifact cut off
 #if best clade does not have 100% strtipspercent, mark it inclusion
 #if best clade does not include each strtip, mark it artifacts if under cutoff, else poly
+
+#this stuff is needed for automation of running raxml gene trees on mit's engaging cluster.
+
+ssh_inst = "ssh -l abigailc -i ~/.ssh/id_rsa eofe5.mit.edu"
+clus_head = "abigailc@eofe5.mit.edu:/home/abigailc/"
 
 def MakeSubtreesFile(nexus, subtrees, verbose = False):
     print("Making subtreesfile")
@@ -87,7 +94,9 @@ def GetRankFromSubtreesFile(subtrees, ranknum, verbose = False):
             gi, tax = gitax.split("~")
         except:
             print ("ERROR WITH:"+gitax)
-            raise SystemExit
+            print("Taxon has no gi number. rank assignation may be confused... we will see.")
+            tax = gitax
+        
         
         tn = tax[:-1]
         taxlist = tn.split("|")
@@ -105,7 +114,8 @@ def GetRankFromSubtreesFile(subtrees, ranknum, verbose = False):
 ##        print(ranklist)
     print("Added "+str(len(ranklist))+" groupnames to parsing queue")
     return ranklist
-    
+
+
 def MakeSubtreesDict(subtrees, verbose = False):
     print("Making Subtrees Dictionary")
     stdict = {}
@@ -528,6 +538,8 @@ def PerformScan(stringlist, treefile, artcutoff, fewnum, treesubfile, verbose = 
 ##        print titem
     return tablelist
 
+########END OF ORIGINAL PROGRAM#######
+
 def GetRankFromSubtreesFile_SubSample(subtrees, ranknum, groupstring, verbose = False):
     print("Getting ranks from subtrees file seqIDS")
     ranklist = []
@@ -649,20 +661,20 @@ def PerformScan_SubSample(stringlist, treefile, artcutoff, fewnum, treesubfile, 
 
         table.add_row(tab)
         subtrees_line = tab[2]
-      
+#      
 ##        print(subtrees_line)
         subtrees_line_list = subtrees_line.split(",")
 ##        print(subtrees_line_list)
         for item in subtrees_line_list:
             if "[" in item:
-                item = item[3:]
-            nitem = re.sub("[A-Za-z \[\]:]*", "", item)
+#                item = item[3:]
+                nitem = re.sub("[A-Za-z \[\]:]*", "", item)
             if len(nitem) >4:
                 print (nitem+"   "+item)
 ##            print(nitem)
             if nitem in subtrees_new_dict:
-                 subtrees_new_dict[nitem] =  subtrees_new_dict[nitem]+" "+string
-            subtrees_new_dict[nitem] = string
+#                 subtrees_new_dict[nitem] =  subtrees_new_dict[nitem]+" "+string
+                subtrees_new_dict[nitem] = string
             #subtrees new dict contains 1,2,3 (subtree numbers) : actinobacteria (or "dogs cat rats")?
     
         #whichever is good, print(?) or just return I guess if we're gunna run though lots
@@ -897,7 +909,7 @@ def SubSampling_Master(stringlist, treefile, artcutoff, fewnum, treesubfile, inp
    
 
 
-
+######################END OF JULY SUBSAMPLING ATTEMPT ###############
 
 
 ############september###########
@@ -913,6 +925,12 @@ class Subtree:
         self.fasttree_st = ""
         self.raxml = ""
         self.species_tree = ""
+        self.prefix = ""
+        self.cladetype = ""
+    def set_type(self, typ):
+        self.cladetype = typ
+    def set_prefix(self, pref):
+        self.prefix = pref
     def set_species_tree(self,speciest):
         self.species_tree = ""
     def set_raxml(self, rax):
@@ -931,8 +949,14 @@ class Subtree:
         else:
             for item in tips:
                 self.tips.append(item)
+    def ret_type(self):
+        return self.cladetype
     def ret_string(self):
         return self.string_name
+    def ret_name(self):
+        return self.number_name
+    def ret_prefix(self):
+        return self.prefix
     def ret_cat(self):
         return self.category
     def ret_tips(self):
@@ -950,9 +974,9 @@ class Subtree:
 
 def PerformScan_Complex_SubSample(stringlist, treefile, artcutoff, fewnum, treesubfile, verbose = False):
     print("Beginning outer clade-determination")
+    typedict = {}
     if stringlist[0] == "PerformGetRankFromSubtreesFile":
         ranknumstring = stringlist[1]
-        
         ranknumlist = ranknumstring.split()
         perf = "yes"
     else:
@@ -1014,7 +1038,8 @@ def PerformScan_Complex_SubSample(stringlist, treefile, artcutoff, fewnum, trees
 
         table.add_row(tab)
         subtrees_line = tab[2]
-      
+        type_line = tab[1]
+        
 ##        print(subtrees_line)
         subtrees_line_list = subtrees_line.split(",")
 ##        print(subtrees_line_list)
@@ -1028,6 +1053,7 @@ def PerformScan_Complex_SubSample(stringlist, treefile, artcutoff, fewnum, trees
             if nitem in subtrees_new_dict:
                  subtrees_new_dict[nitem] =  subtrees_new_dict[nitem]+" "+string
             subtrees_new_dict[nitem] = string
+            typedict[nitem] = type_line
             #subtrees new dict contains 1,2,3 (subtree numbers) : actinobacteria (or "dogs cat rats")?
     
         #whichever is good, print(?) or just return I guess if we're gunna run though lots
@@ -1038,34 +1064,455 @@ def PerformScan_Complex_SubSample(stringlist, treefile, artcutoff, fewnum, trees
 ##        print titem
 ##    print("SubNewDict")
 ####    print(subtrees_new_dict)
-    return tablelist, subtrees_new_dict, st_trees, stdict
+    return tablelist, subtrees_new_dict, st_trees, stdict, typedict
+
+
+class Fasta:
+	def __init__(self, name):
+		#all ids should be stripped and have ">" removed for reasons.
+		#for now, sequences do not have any stripping applied
+		self.name = name
+		self.ids = []
+		self.original_ids = []
+		self.original_seqs = []
+		self.seqs = []
+	def gen_original_lists(self, fastaname):
+		with open(fastaname) as fastafile:
+			for line in fastafile:
+                                if "\n" == line:
+                                        pass
+				if ">" in line:
+					#write the previous AA seq
+					try:
+                                                AAseq=AAseq.strip()
+						self.seqs.append(AAseq)
+						self.original_seqs.append(AAseq)
+					except:
+						pass
+						#initialize a new AAseq
+					AAseq = ""
+					#format the seqID
+					newline = line.strip()
+					newline = line.strip(">")
+					#write the seqID
+					self.ids.append(newline.strip())
+					self.original_ids.append(newline.strip())
+				else:
+					AAseq = AAseq+line
+                        AAseq=AAseq.strip()
+			#catch the last AAseq pass
+			self.seqs.append(AAseq)
+			self.original_seqs.append(AAseq)
+		print("Initial sequence and ID lists created. Contains "+str(len(self.ids))+" sequences")
+        
+	def gen_new_fasta(self, new_fasta_name):
+		#this should print the changed seqids and changed AA sequences to file.
+		newfasta = new_fasta_name
+		# print(len(self.original_ids))
+		# print(len(self.ids))
+		# print(len(self.original_seqs))
+		# print(len(self.seqs))
+		with open (newfasta, "w") as new:
+			for i in range(len(self.ids)):
+				new.write(">"+self.ids[i].strip()+"\n")
+				# print(i)		#
+				#unclear if this needs a "\n" after it... check.#TODO
+                                #print(self.seqs)
+                                #print(type(self.seqs[i]))
+				new.write(self.seqs[i]+"\n")
+		print("Finished, your new fasta file is located at "+newfasta)
+		#done
+	def extract(self, list_of_keeps):
+		keep_ids = []
+		keep_seq = []
+		success = 0
+		suc_num = len(list_of_keeps)
+                or_num = len(self.original_ids)
+                print(list_of_keeps[0])
+                print(self.original_ids[0])
+		for item in list_of_keeps:
+			item = item.strip()
+			for thing in self.original_ids:
+				if thing == item:
+					keep_ids.append(thing)
+					index = self.original_ids.index(item)
+					seq = self.original_seqs[index]
+					keep_seq.append(seq)
+					success += 1
+		if suc_num == success:
+			print("100% complete extract")
+		else:
+			print(str(success)+"out of "+str(suc_num)+" sequences extracted")
+		self.ids = keep_ids
+		self.seqs = keep_seq
+		
+
+###needs editing. make into own script at some point.
+
+
+
+def gen_correlate_file(list_of_input_files, corr_file):
+    #this should be in form
+    #1 name
+    #2 name
+    #3 name
+    #requires 1: list of files 2. name for corr_file.
+    i = 0
+    with open(corr_file, "w") as corr:
+        for item in list_of_input_files:
+            i += 1
+            #make sure the \n spacing works correctly.
+            corr.write(str(i)+" "+item+"\n")
+    return corr_file
+
+def move_to_cluster(list_of_files, clus_path):
+    #requires os.system
+    #requires scp(?)
+    #do the thing
+    for item in list_of_files:
+        os.system("scp "+item+" "+clus_head+clus_path)
+    print("Finished moving files to cluster in place:"+clus_path)
+#todo make cluster stuff into it\s own module?
+
+#takes input of all of the fastas you want to align, and the group named
+#here end-file-list is actually just a list of all the .fasta files you want to align.
+#here "prefix" refers to the project name, not the individual prefixes. Confusing, right? I know.
+def muscle_align_on_cluster(end_file_list, prefix):
+    #this creates dir you will use on the cluster.
+    aligned_list = []
+    for item in end_file_list:
+        aligned_list.append(item+"_Muscle.fasta")
+    check_directory_existance(prefix, ssh_inst)
+    clus_path = "/Gene_Trees/"+prefix
+    a = gen_muscle_script(prefix+"_Sc.sh", "~"+clus_path+"/"+prefix+"_Corr.txt", str(len(end_file_list)), prefix+"job")
+    b = gen_correlate_file(end_file_list, prefix+"_Corr.txt")
+    end_file_list.append(a)
+    end_file_list.append(b)
+    direct = os.getcwd()
+    move_to_cluster(end_file_list, clus_path)
+    print("everything should be generated and on the cluster")
+    n = str(len(end_file_list))
+    print("there are "+n+" files that should be aligning right now")
+    os.system(ssh_inst+" 'cd ~/Gene_Trees/"+prefix+";echo $PWD;sbatch "+a+"'")
+    finished = "start"
+    #to see if the run is complete, see if each new file has been generated. check every 5 minutes for muscle.
+    #initialize list of things to move home. initially equal to aligned_list.
+    movehome = []
+    for i in aligned_list:
+        movehome.append(i)
+    while finished is not True:
+        #try and move each home.
+        for filename in movehome:
+            os.system("scp "+clus_head[:-1]+clus_path+"/"+filename+" "+direct)
+        for item in aligned_list:
+            #see if it got moved home.
+            exists = os.path.isfile(item)
+            if exists is True:
+                if item in movehome:
+                    movehome.remove(item)
+                finished = "yes"
+            else:
+                finished = False
+                break
+        if finished == "yes":
+            print("Should be done!")
+            finished = True
+        else:
+            
+            #wait five minutes and then try again.
+            print("checking.... alignment outputs do not exist yet. sleeping for 5 minutes.")
+            time.sleep(30)
+    #now, concatenate the output file. when doing large batches, might want to move each to new folder.... but maybe not for now.
+    print("Your files have been aligned! They are located at "+direct)
+    return aligned_list
+
+
+#cc_file_list is your list of aligned files.
+#prefix is actually projectname.
+def raxml_run_on_cluster(cc_file_list, prefix):
+    #this creates dir you will use on the cluster.
+    tree_list = []
+    for item in cc_file_list:
+        #this is going to be something different... like raxml_bipartitions.blah
+        alist = item.split(".")
+        athing = alist[0]
+        tree_list.append("RAxML_bipartitions."+athing)
+    print(tree_list)
+    check_directory_existance(prefix, ssh_inst)
+    clus_path = "/Gene_Trees/"+prefix
+    a = gen_raxml_script(prefix+"_Rax_Sc.sh", "~"+clus_path+"/"+prefix+"_Rax_Corr.txt", str(len(cc_file_list)), prefix+"job")
+    b = gen_correlate_file(cc_file_list, prefix+"_Rax_Corr.txt")
+    cc_file_list.append(a)
+    cc_file_list.append(b)
+    direct = os.getcwd()
+    move_to_cluster(cc_file_list, clus_path)
+    n = str(len(cc_file_list))
+    print("everything should be generated and on the cluster. filenumber: "+n+" starting raxml.")
+    os.system("ssh -l abigailc -i ~/.ssh/id_rsa eofe5.mit.edu 'cd ~/Gene_Trees/"+prefix+";echo $PWD;sbatch "+a+"'")
+    finished = "start"
+    #to see if the run is complete, see if each new file has been generated. check every 5 minutes for muscle.
+       #initialize list of things to move home. initially equal to aligned_list.
+    movehome = []
+    for i in tree_list:
+        movehome.append(i)
+    while finished is not True:
+        #try and move each home.
+        for filename in movehome:
+            os.system("scp "+clus_head[:-1]+clus_path+"/"+filename+" "+direct)
+        for item in tree_list:
+            #see if it got moved home.
+            exists = os.path.isfile(item)
+            if exists is True:
+                if item in movehome:
+                    movehome.remove(item)
+                finished = "yes"
+                
+            else:
+                finished = False
+                break
+        if finished == "yes":
+            print("Should be done!")
+            finished = True
+        else:
+            #wait an hour and then try again.
+            #this value should vary based on the size of the tree we are running. 125 tips - > five minutes.
+            #thousands? will take much longer, use maybe an hour between checks.
+            time.sleep(300)
+    c = tree_list
+    print(tree_list)
+    print("RAXML finished, tree(s) should exist locally")
+    return c
+
+
+def gen_raxml_script(scriptfile, indexname, n, Jobname):
+    #currently assuming you are running in the dir that files are in and should be returned to.
+    #thats it. just print the script. return its filename, which will need to be added to list of things to be moved to the cluster.
+    
+
+##example script
+    a =  """#!/bin/bash                                                                                             
+#SBATCH -p sched_mit_g4nier                                                                             
+#SBATCH -t 0-10:00:00    
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=20                                                                                 
+#SBATCH -J RAX"""+Jobname+"""   
+#SBATCH -o RAX"""+Jobname+""".out                                                                                         
+#SBATCH --array=1-"""+n+"""
+
+. /etc/profile.d/modules.sh
+module add engaging/RAxML/8.2.9
+##gets my array id, which is needed for use below. this will be, i think, a number like 1,2,3 etc
+MY_ARRAY_ID=$SLURM_ARRAY_TASK_ID
+echo $MY_ARRAY_ID
+
+## given an index file formatted                                                                        
+## <index> <filename>                                                                                   
+## produce the filename for given index                                                                 
+THE_INDEX="""+indexname+"""
+THE_INPUT_FILE=$( cat $THE_INDEX | grep "^$MY_ARRAY_ID " | awk '{print $2}' )
+echo $THE_INPUT_FILE
+echo $THE_INPUT_FILE$ENDING
+
+NEW=${THE_INPUT_FILE%%.*}
+echo $NEW
+  
+raxmlHPC-PTHREADS-AVX -T 20 -f a -m PROTGAMMALGF -p 12345 -x 12345 -#100 -n $NEW -s $THE_INPUT_FILE         
+
+exit"""
+    with open(scriptfile, "w") as script:
+        script.write(a)
+    return scriptfile
+
+
+
+   ####needs editing
+def check_directory_existance(prefix, ssh_inst):
+    os.system(ssh_inst+" \' mkdir Gene_Trees;cd Gene_Trees;mkdir "+prefix+"\'")
+    
+def gen_muscle_script(scriptfile, indexname, n, Jobname):
+    #currently assuming you are running in the dir that files are in and should be returned to.
+    # direct = os.getcwd()
+    # host = socket.gethostname()
+    # user = getpass.getuser()
+    # addr = user+"@"+host+":"+direct
+    #figure out how many need to be run. n = len(listoffilesinindex). n
+    #figure out a name - scriptfile
+    #figure out path to index file. indexname
+    #thats it. just print the script. return its filename, which will need to be added to list of things to be moved to the cluster.
+    addr = "PLACEHOLDER"
+    
+
+##example script
+    a =  """#!/bin/bash                                                                                             
+#SBATCH -p sched_mit_g4nier                                                                             
+#SBATCH -t 0-01:00:00                                                                                   
+#SBATCH -J Mus"""+Jobname+"""                                                                                         
+##SBATCH -o Mus"""+Jobname+""".out
+#SBATCH --array=1-"""+n+"""
+
+. /etc/profile.d/modules.sh
+module add engaging/muscle/3.8.31
+##gets my array id, which is needed for use below. this will be, i think, a number like 1,2,3 etc
+MY_ARRAY_ID=$SLURM_ARRAY_TASK_ID
+echo $MY_ARRAY_ID
+
+## given an index file formatted                                                                        
+## <index> <filename>                                                                                   
+## produce the filename for given index                                                                 
+THE_INDEX="""+indexname+"""
+THE_INPUT_FILE=$( cat $THE_INDEX | grep "^$MY_ARRAY_ID " | awk '{print $2}' )
+echo $THE_INPUT_FILE
+ENDING=_Muscle.fasta
+echo $THE_INPUT_FILE$ENDING
+
+muscle -in $THE_INPUT_FILE -out $THE_INPUT_FILE$ENDING
+
+exit"""
+    with open(scriptfile, "w") as script:
+        script.write(a)
+    return scriptfile
+
+
+                
+def ComplexSubSamplingMaster(stringlist, treefile, artcutoff, fewnum, treesubfile, inputfasta, verbose, projectname = "NA"):
+    tabl, subtrees_new_dict, st_trees, stdict, typedict = PerformScan_Complex_SubSample(stringlist, treefile, artcutoff, fewnum, treesubfile, verbose)
+    #typedict is {'1': "Monophyly_strict"}
+
+    information = args.NEXUS_TREE+"_INFO.txt"
+    print("************************************************************")
+    for item in tabl:
+        print(item)
+    with open (information, "w") as info:
+        for titem in tabl:
+            if type(titem) == str:
+                info.write("\n"+titem+"\n")
+            else:
+                titem_text = titem.get_string()
+                info.write(titem_text)
+        info.write(str(args))
+    print("now beginning the subsampling")
+    # print(stdict)
+    # print("*****^stdict****")
+    # appears {'1': ["tip1", "tip2", "tip3"]}
+    
+    # print(tablelist)
+    # print("*****^tablelist****")
+    # appears ["Rank N", <prettytable object>]
+    
+    # print(subtrees_new_dict)
+    # print("*****^subtrees_new_dict****")
+    #appears {'1': "Mammal"}
+    
+    # print(st_trees)
+    # print("*****^st_trees****")
+    # appears {'1': "(tip1,(tip2,tip3));"
+
+    #initializing lists to contain all subtree objects, too-small ones, and acceptable ones(big)
+    list_of_subtree_class_objects = []
+    list_of_short_clades = []
+    list_of_big_clades = []
+    #from these messy returns, create objects of class subtree to pass on to the next function.
+    #each subtree in sub-new-dict must be represented.
+    for item_name in subtrees_new_dict:
+        #item should be the subtree NUMBER identifier
+        #this adds an object of class Subtree with name = number identifier to the list "list_of_subtree_class_objects"
+        this_object = Subtree(item_name)
+        list_of_subtree_class_objects.append(this_object)
+        
+        this_object.set_fasttree(st_trees[item_name])
+        #cleaning up the group name to never include lead/trail whitespace or bars.
+        string_a = subtrees_new_dict[item_name]
+        string_a = string_a.strip("|")
+        string_a = string_a.strip()
+        type_a = typedict[item_name]
+        this_object.set_type(type_a)
+        this_object.set_string(string_a)
+        this_object.set_tips(stdict[item_name])
+        #finished generating the basics
+    #load the input fasta file
+    print(inputfasta)
+    orig_fasta = Fasta(inputfasta)
+    orig_fasta.gen_original_lists(inputfasta)
+    #create the sub-fasta files and name them something reasonable?
+
+    #create the PREFIXES which will be:
+    #string(first six letters) + stnumber (first four numbers) +
+    list_of_fasta_to_align = []
+    for subtree_object in list_of_subtree_class_objects:
+        #generate a list of " keeps" which needs to exactly match up with the sequence IDs as stored in the Fasta object.
+        #we have the tips loaded as list from subtree_object.ret_tips
+        alltips = []
+        for tip in subtree_object.ret_tips():
+            newtip = tip.strip()
+            newtip = newtip.strip(">")
+            newtip = newtip.strip("'")
+            alltips.append(newtip)
+        #alltips is a list of 'cleaned' tip names from the tips stored in stdict. so it will match those from original .fasta file.
+        #this modifies the current tips and seqs lists in orig_fasta to only include those in this specific subtree.
+        orig_fasta.extract(alltips)
+        #this creates the prefix for this specific subtree
+        st_num = subtree_object.ret_name()[:6]
+        group_nam = subtree_object.ret_string()[:4]
+        prefix = projectname+group_nam+st_num
+        #this generates the new .fasta file (literally makes a fasta containing only the sequences seen in this subtree)
+        orig_fasta.gen_new_fasta(prefix+"_orig.fasta")
+        #this links the newly created fasta with this subtree instance.
+        subtree_object.set_fasta(prefix+"_orig.fasta")
+        #this links the prefix used with this specific subtree instance.
+        subtree_object.set_prefix(prefix)
+        if "NoClade_few" in subtree_object.ret_type():
+            list_of_short_clades.append(subtree_object)
+        else:
+            list_of_big_clades.append(subtree_object)
+            list_of_fasta_to_align.append(prefix+"_orig.fasta")
+        #first, make the fasta file and add it to the object - done
+
+        #then, send that to the cluster to align and make the raxml - to be implemented
+    
+    muscle_list = muscle_align_on_cluster(list_of_fasta_to_align, projectname)
+    rax_list = raxml_run_on_cluster(muscle_list, projectname)
+  
+    #add appropriate raxml filename to each subtrees instance. they should be called.... originailname+_Muscle.fasta+??
+
+        #then, send everything over the MakeSpeciesTree.py to generate the species trees for everything.
+        #-0still need determination of 
+        
+   
+  
+    # def set_species_tree(self,speciest):
+    #     self.species_tree = ""
+    # def set_raxml(self, rax):
+    #     self.raxml = rax
+    # def set_category(self, cat):
+    #     self.category = cat
+    # def set_fasta(self, fasta):
+    #     self.fasta = fasta
+
+    print("thats all for now.. initial testing is done. hgopefully there are loads of gene_trees right now!")
+    raxset = 0
+    total = len(rax_list)
+    for tree in rax_list:
+        junk,pref = tree.split(".")
+        for st_o in list_of_subtree_class_objects:
+            if st_o.ret_prefix == pref:
+                st_o.set_raxml(tree)
+    if raxset == total:
+        print("All complete!")
+    else:
+        print("of "+str(total)+" raxml trees generated, only "+str(raxset)+" were successfully matched with the correct subtree object!")
+        
+    #nmow run the species_tree_generator.
+    #1. pick bact / arc / euk
+    #2. make species file
+    #3. ??? organize the pass.
 
     
-def ComplexSubSamplingMaster(stringlist, treefile, artcutoff, fewnum, treesubfile, inputfasta, verbose):
-    tablelist, subtrees_new_dict, st_trees, stdict = PerformScan_Complex_SubSample(stringlist, treefile, artcutoff, fewnum, treesubfile, verbose)
-    print(stdict)
-    print(tablelist)
-    print(subtrees_new_dict)
-    print(st_trees)
     chosen_seqs = []
 #here i want to make a bunch of objects of class Subtree, one for each idntified clade of interest.
 
 
 
 
-    import random
-    print("Clade - dictionaries were successfully created. Moving on to inner SS... ")
-    with open(treefile+"SubSamp_INFO.txt", "w") as info:
-        for item in subtrees_new_dict:
-            groupstring = subtrees_new_dict[item]
-            print(groupstring)
-            a = st_trees[item]
-            #write the .fasttree subtree to file. item = groupname
-            with open ("Fasttree_subtree_"+groupstring+".newick", "w") as new:
-                 new.write(a)
-            dire = os.getcwd()
-            
-            break
         
     print("Finished choosing sequences to keep.")
     print("Extracting given sequences.... ")
@@ -1120,6 +1567,7 @@ if __name__ == "__main__":
     import argparse
     import os
     import re
+    import time
     parser = argparse.ArgumentParser(description="All")
     parser.add_argument("directory", nargs='?', default=os.getcwd(), type=str, help="type name of directory to run in (where .nex resides)")
     parser.add_argument("NEXUS_TREE", type=str, help="type the name of your .nex file")
@@ -1132,6 +1580,7 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--complexss", action = "store_true", help="toggles complex subsampling within each clade")
     parser.add_argument("-f", "--fasta", action = "store", help="if using subsampling, provide a fasta file to pull sequences from")
     parser.add_argument("-v", "--verbose", action = "store_true", help="prints more information - for debugging mostly.")
+    parser.add_argument("-n", "--nameofproject", action = "store", help="name for youyr project - will be included in output file names. short. eg: SQMO")
     
     args = parser.parse_args()
     
@@ -1158,14 +1607,16 @@ if __name__ == "__main__":
     else:
         print("You may not use both -s and -r at the same time (yet), sorry!")
     artcutoff = 1.0 - float(args.polyclade)
-
+    print("Distincty clade = "+str(args.polyclade)+" of group-tips")
+    print("Minimum group tips for clade consideration: "+str(args.minimum))
+    
     #complex subsampling needs to exist. creates a .raxml of the subtree and also makes a raxml species tree for those taxa.
     if args.subsampling == True:
         print("Beginning Smart SubSampling!")
         SubSampling_Master(stringlist, args.NEXUS_TREE, artcutoff, int(args.minimum), args.treesfile, args.fasta, args.verbose)
         #call master subsampling
     if args.complexss == True:
-        ComplexSubSamplingMaster(stringlist, args.NEXUS_TREE, artcutoff, int(args.minimum), args.treesfile, args.fasta, args.verbose)
+        ComplexSubSamplingMaster(stringlist, args.NEXUS_TREE, artcutoff, int(args.minimum), args.treesfile, args.fasta, args.verbose, args.nameofproject)
     else:
         tabl = PerformScan(stringlist, args.NEXUS_TREE, artcutoff, int(args.minimum), args.treesfile, args.verbose)      
         information = args.NEXUS_TREE+"_INFO.txt"
