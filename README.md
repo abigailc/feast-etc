@@ -4,16 +4,16 @@ place for some of my scripts to go
 ones that work right now:
 
 ShortenFasta | Takes fast downloaded from NCBI (or blast+ w specific output fmt) and shortens IDs to >Species_name|Accnumber
-usage $python ShortenFasta.py /path/to/directory/if/not/here example.fasta
+        usage $python ShortenFasta.py /path/to/directory/if/not/here example.fasta
 
 AddTaxonomy | Adds rank information to .fasta file sequence IDs if shortened by Shorten.py
-usage $python AddTaxonomy.py /path/to/directory/if/not/here -f example.fasta
+        usage $python AddTaxonomy.py /path/to/directory/if/not/here -f example.fasta
 	optional flags
 	-r “phylum class” | to append just phylum and class instead of each rank
 	-i | toggles printing an information file
 
 ClusterAlignRax.py
-usage $python ClusterAlignRax.py /path/to/directory/if/not/here -f example.fasta -s nameforjob
+        usage $python ClusterAlignRax.py /path/to/directory/if/not/here -f example.fasta -s nameforjob
 
 
 
