@@ -113,10 +113,9 @@ class Fasta:
                 newitem = rankdict["superkingdom"]+"|"+rankdict["kingdom"]+"|"+rankdict["phylum"]+"|"+rankdict["class"]+"|"+rankdict["order"]+"|"+rankdict["family"]+"|"+rankdict["genus"]+"|"+item
                 self.ids[index] = newitem
             else:
-                ranklist = ranklist.split()
                 a = ""
-                for item in ranklist:
-                    a = a + rankdict[item]+"|"
+                for rank in ranklist:
+                    a = a + rankdict[rank]+"|"
                 a = a + item
                 self.ids[index] = a
     def gen_new_fasta(self, new_fasta_name):
@@ -198,8 +197,12 @@ if __name__ == "__main__":
     MyFasta.gen_numbers()
     MyFasta.SetTaxID()
     MyFasta.GetTaxonomy()
+    if " " in args.ranks:
+        ranklist = args.ranks.split()
+    else:
+        ranklist = [args.ranks]
     if args.ranks:
-         MyFasta.AppendTaxonomy(ranklist = args.ranks)
+         MyFasta.AppendTaxonomy(ranklist)
     else:
          MyFasta.AppendTaxonomy()
     #get a name for the new fasta
