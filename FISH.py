@@ -6,6 +6,9 @@
 #things this doesn't do: play super nice with accession numbers instead of GI numbers. probably easy to convert, (see that one script that one time), but meh
 #do it later.
 
+#todo
+#import functions from FEAST - append taxonomy, extract, split, etc
+
 
 #when you create a Fasta object, initialize it with sequence ID and Data by using either gen_original_lists or blast2fasta
 class Fasta:
@@ -20,7 +23,10 @@ class Fasta:
 		# these are the original SEQids and Sequences. They should never be modified after generation in gen_original_lists or blast_to_fasta
 		self.original_ids = []
 		self.original_seqs = []
-
+		self.species_names = []
+		self.numbers = []
+		self.taxid = []
+		self.taxonomy = []
 	def ret_name(self):
 		return self.name
 	def gen_original_lists(self, fastaname):
@@ -63,19 +69,24 @@ class Fasta:
 			self.ids[index] = newline
 			#done
 		print("Manual shorten complete")
+	def gen_numbers(self):
+		for item in self.ids:
+			number = re.sub("(.*)(\|)(.*)","\\3", item)
+			self.numbers.append(number)
 	def gen_species_lists(self):
-			speclist = []
-			for item in self.ids:
+		self.species_names = []
+		speclist = []
+		for item in self.ids:
 								# item will be "Nostoc_punctiforme_PCC_73102|gi#|186468349" or "Blah|Rank|Nostoc_punctiforme_PCC_73102|gi#|186468349"
 								# for now, ignores anything that isn't Genus_species.
 								# for example, ignores strain, ., things with an extra
 								# word, etc.
-				taxon = re.sub("([^_]*)([A-Z][a-z]*_[a-z]*)(.*)", "\\2", item)
-				if "#" in taxon:
-					print ("TAXON error in gen_species_lists():" + taxon)
-				speclist.append(taxon)
-			return speclist
-
+			taxon = re.sub("([^_]*)([A-Z][a-z]*_[a-z]*)(.*)", "\\2", item)
+			if "#" in taxon:
+				print ("TAXON error in gen_species_lists():" + taxon)
+			speclist.append(taxon)
+			self.species_names.append(taxon)
+		return speclist
 	def common_shorten(self, verbose = False):
 		#TODO: allow input of manual shorten-pairs, possibly in new function
 		#put your conversions of common strings to shorten here
@@ -201,6 +212,7 @@ class Fasta:
 		if verb == True:
 			print("there were "+str(errors)+" weird_ID errors")
 		print("weird id check done")
+		
 	def duplicates_check(self, verb = False):
 		listoflines = []
 		rep = 0
@@ -218,6 +230,7 @@ class Fasta:
 		print("duplicate check done")
 
 	def index_shorted(self, replace):
+		#currently does NOT work w/ accession numbers
 		#here replace is depth and/or gi num eg "2 3 gi"
 		CTdict = {}
 		for line in self.ids:
@@ -340,7 +353,7 @@ class Fasta:
 		kid = "no"
 		vid = "no"
 		CTdict = {}
-		with open (infofile) as old:
+		with open (info_file_in) as old:
 			for line in old:
 				#first pass: gets key (original ID)
 				#second pass: gets value (new ID)
@@ -362,10 +375,20 @@ class Fasta:
 						vid = "yes"
 			#catch the final pass
 			CTdict[key]=value
-		for item in self.original_ids:
-			index = self.original_ids.index(item)
-			newid = CTdict[item]
-			self.ids[index] = newestid
+
+		if self.original_ids == []:
+			for thing in CTdict:
+				self.ids.append(thing)
+				self.original_ids.append(CTdict[thing])
+		else:
+			for item in self.original_ids:
+				index = self.original_ids.index(item)
+				newid = CTdict[item]
+				self.ids[index] = newid
+		print("original ids:")
+		print(self.original_ids)
+		print("new ids:")
+		print(self.ids)
 		#done
 		#troubleshooting: do not preform this operation after any that change self.ids. this op must be done first, or in a seperate command.
 
@@ -417,7 +440,7 @@ class Fasta:
 					for item in self.original_ids:
 						index = self.original_ids.index(item)
 						line = line.replace(item, self.ids[index])
-						new.write(line)
+					new.write(line)
 		print("finished, tip-replaced-newick file at: "+newnewick)
 		#done
 
@@ -460,6 +483,7 @@ class Fasta:
 		return len(self.original_seqs[0])
 
 	def shorten(self):
+		print("shortening ids...")
 		unk = "no"
 		normal = 0
 		ucount = 0
@@ -468,29 +492,41 @@ class Fasta:
 
 			# this removes words in brackets that aren't Species_name
 			# and then changes NCBI's default naming scheme to be
-			#>Species_name|gi#|#########
+			#>Species_name|#########
 			# and makes a list of all gi nums and all
 			# duplicates
-			number = re.sub(
-				"(gi)(\|)([0-9]*)(\|)([A-Za-z]*)(\|)(.*)(\[\'?[A-Z]?[a-z]* ?.*\])(.*)", "\\3", line)
-			num = number.strip()
-			edit1 = re.sub(
-				"(gi)(\|)([0-9]*)(\|)([A-Za-z]*)(\|)(.*)(\[\'?[A-Z]?[a-z]* ?.*\])(.*)", "\\8\\2\\1#|\\3", line)
+			# AAH91460.1 Ribosomal protein L3 [Danio rerio]
+			if "gi|" in line:
+				number = re.sub("(gi)(\|)([0-9]*)(\|)([A-Za-z]*)(\|)(.*)(\[\'?[A-Z]?[a-z]* ?.*\])(.*)", "\\3", line)
+				num = number.strip()
+				edit1 = re.sub("(gi)(\|)([0-9]*)(\|)([A-Za-z]*)(\|)(.*)(\[\'?[A-Z]?[a-z]* ?.*\])(.*)", "\\8\\2\\1#|", line)
+			#get acc number
+			else:
+	  			number = re.sub("([^ ]*)(.*)(\[\'?[A-Z]?[a-z]* ?.*\])(.*)", "\\1", line)
+				num = number.strip()
+				#get edit | AAH91460.1 Ribosomal protein L3 [Danio rerio]
+				edit1 = re.sub("([^ ]*)(.*)(\[\'?[A-Z]?[a-z]* ?.*\])(.*)", "\\3|", line)
 			if "[" in edit1:
 				unk = "no"
 				normal += 1
+			else:
+				unk = "yes"
 			edit2 = re.sub("[\[\]]", "", edit1)
-			edit3 = re.sub("[:;=,/\+'\.\(\)]", "_", edit2)
+			#for now, leave periods in name due to their necessity in acc numbers (????)
+			edit3 = re.sub("[:;\.=,/\+'\(\)]", "_", edit2)
 			edit4 = re.sub(" ", "_", edit3)
 			edit4 = re.sub("__", "_", edit4)
+			edit4 = edit4+num
 			if unk == "no":
 				self.ids[index] = edit4
 			else:
 				print("Unknown Species in ID:" + line)
-
+		print("shortened: "+str(normal)+" sequence")
+		
 	def blast2fasta(self, blastlist, ENTREZ=False, num=False):
 		# entrez is used to ensure that sequence saved uses correct TAXON, esp. if sequence is a MULTISPECIES entry.
 		# entrex should be somethin like "Mycobacterium triplex"
+		#take from MakeSPeciesTree.py version if you want a new sequence for each multispecies thing(!)
 		# num is how many sequences to write. for species trees, we almost certainly only want one.
 		# for converting full downloaded .fastas, we will want all of them (default = False means to do all of them)
 		# Converts blast outfmt "6 sseqid stitle sseq" to original lists if
@@ -566,8 +602,42 @@ class Fasta:
 				self.original_seqs.append(newseq.strip())
 
 		print("Blasttofasta id/seq loading complete!")
-
-
+	def SetTaxID(self):
+		self.taxid = []
+		for item in self.numbers:
+			GItoTAXID = "xmllint --xpath '/GBSet/GBSeq/GBSeq_feature-table/GBFeature/GBFeature_quals/GBQualifier[GBQualifier_name=\"db_xref\"]/GBQualifier_value/text()' \"http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=protein&id="+item+"&retmode=xml\""
+			futuretaxid = subprocess.check_output(GItoTAXID, shell=True)
+			taxid = re.sub("(taxon:)([0-9]*)(.*)", "\\2", futuretaxid)
+			self.taxid.append(taxid)
+			
+	def GetTaxonomy(self):
+		self.taxonomy = []
+		if self.taxid = []:
+			print("You need to generate taxids first.. lets try")
+			self.SetTaxID()
+		for item in self.taxid:
+			taxid = number
+			ranklist = "superkingdom kingdom phylum class order family"
+			ranklist = ranklist.split()
+			for r in ranklist:
+                TAXIDtoRANKNAME = "xmllint --xpath '/TaxaSet/Taxon/LineageEx/Taxon[Rank=\"" + r + \
+                                "\"]/ScientificName/text()'  \"http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=taxonomy&id=" + taxid + "\""
+                try:
+                    rankname = subprocess.check_output(TAXIDtoRANKNAME, shell=True)
+                except:
+                    rankname = "NA"
+					rankname = re.sub(" ", "_", rankname)
+				taxdict = {}
+				taxdict[r]=rankname
+				self.taxonomy.append(taxdict)
+	def AppendTaxonomy(self):
+		for item in self.ids:
+			index = self.ids.index(item)
+			rankdict = self.taxonomy[index]
+			newitem = rankdict["superkingdom"]+"|"+rankdict["kingdom"]+"|"+rankdict["phylum"]+"|"+rankdict["class"]+"|"+rankdict["order"]+"|"+rankdict["family"]+"|"+item
+			self.ids[index] = newitem
+#TODO:
+#add get taxonomy to parser..
 #this hasn't been implemented in class fasta, so I am leaving it commented out.. subtrees file might be easily replaced using replace.newick but it might take literally ages... unclear.
 
 # def replace2(replace_file, dict_old_new, charnum, verb):
@@ -642,7 +712,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description="All")
 	#necessary bits
 	parser.add_argument("directory", nargs='?', default=os.getcwd(), type=str, help="type name of directory to run in where fasta resides, if not pwd")
-	parser.add_argument("fasta", type=str, help="type the name of your .fasta file")
+	parser.add_argument("-fas", "--fasta", action = "store", default = False, help="type the name of your .fasta file")
 	#options to load changes from another file
 	parser.add_argument("-i", "--infofile", action = "store", default = False, help="Provide an Info File (as generated by this script previously) to pull original and new sequences from")
 
@@ -706,7 +776,8 @@ if __name__ == "__main__":
 	if args.blast2fasta != False:
 		MyFasta.blast2fasta(args.fasta)
 	else:
-		MyFasta.gen_original_lists(args.fasta)
+		if args.fasta != False:
+			MyFasta.gen_original_lists(args.fasta)
 
 
 	#this should be done in conjunction w / write fasta or replace newick.
@@ -721,8 +792,8 @@ if __name__ == "__main__":
 	if args.fixAA == True:
 		MyFasta.weird_AA_check(verb)
 	#shortening calls
-		if args.shorten == True:
-				MyFasta.shorten()
+	if args.shorten == True:
+		MyFasta.shorten()
 
 	if args.common == True:
 		MyFasta.common_shorten(verb)
