@@ -409,7 +409,29 @@ class Fasta:
         print(self.ids)
         #done
         #troubleshooting: do not preform this operation after any that change self.ids. this op must be done first, or in a seperate command.
-
+    def one_per_genus(self):
+        #get species list if it doesn't exist
+        genuslist = []
+        used_genus = []
+        indices = []
+        if self.species_names == []:
+            self.gen_species_lists()
+        for item in self.species_names:
+            try:
+                gen, spec = item.split("_")
+            except:
+                gen = item
+            genuslist.append(gen)
+        for gen in genuslist:
+            if gen in used_genus:
+                rem_index = genuslist.index(gen)
+                indices.append(rem_index)
+            else:
+                used_genus.append(gen)
+        for i in sorted(indices, reverse=True):
+            del self.ids[i]
+            del self.seqs[i]
+        print("do not use this method in conjunction with anything other than write-fasta") 
     def gen_new_fasta(self, new_fasta_name):
         #this should print the changed seqids and changed AA sequences to file.
         newfasta = new_fasta_name
@@ -418,7 +440,7 @@ class Fasta:
         # print(len(self.original_seqs))
         # print(len(self.seqs))
         with open (newfasta, "w") as new:
-            for i in range(len(self.original_ids)):
+            for i in range(len(self.ids)):
                 new.write(">"+self.ids[i].strip()+"\n")
                 # print(i)      #
                 #unclear if this needs a "\n" after it... check.#TODO
@@ -630,7 +652,7 @@ class Fasta:
             
     def GetTaxonomy(self):
         self.taxonomy = []
-        if self.taxid = []:
+        if self.taxid == []:
             print("You need to generate taxids first.. lets try")
             self.SetTaxID()
         for item in self.taxid:
@@ -747,6 +769,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--length", action = "store", default=False, help="Provide a max length for your sequenceIDs")
     parser.add_argument("-dn", "--duplicates_number", action = "store_true", help="Flag causes identical seqIDs to be numbered 1 2 3 etc to prevent program confusion")
     parser.add_argument("-dr", "--duplicates_remove", action = "store_true", help="Flag causes identical seqIDs to be removed")
+    parser.add_argument("-og", "--one_per_genus", action = "store_true", help = "Flag keeps first sequence per unique genus")
     parser.add_argument("-fid", "--fixID", action = "store_true", help="Flag scans SeqIDs and removes weird characters like += etc")
     parser.add_argument("-faa", "--fixAA", action = "store_true", help="Flag scans Sequences and removes non-standard AA characters like X B &")
     #options to shorten specific words
@@ -810,6 +833,8 @@ if __name__ == "__main__":
         MyFasta.duplicates_check(verb)
     if args.duplicates_remove == True:
         MyFasta.duplicates_remove(verb)
+    if args.one_per_genus == True:
+        MyFasta.one_per_genus()
     if args.fixID == True:
         MyFasta.weird_ID_check(verb)
     if args.fixAA == True:
